@@ -1,10 +1,10 @@
-import HeroTitle from "@/components/home/HeroTitle";
-import WarningNotice from "@/components/home/WarningNotice";
-import WelcomeBonus from "@/components/home/WelcomeBonus";
-import FeatureList from "@/components/home/FeatureList";
-import PriceCard from "@/components/home/PriceCard";
-import FeatureCard from "@/components/home/FeatureCard";
-import ActionButtons from "@/components/home/ActionButtons";
+import HeroTitle from "@/components/layout/home/HeroTitle";
+import WarningNotice from "@/components/layout/home/WarningNotice";
+import WelcomeBonus from "@/components/layout/home/WelcomeBonus";
+import FeatureList from "@/components/layout/home/FeatureList";
+import PriceCard from "@/components/layout/home/PriceCard";
+import FeatureCard from "@/components/layout/home/FeatureCard";
+import ActionButtons from "@/components/layout/home/ActionButtons";
 
 const features = [
   "ベーシックな取引体験",
