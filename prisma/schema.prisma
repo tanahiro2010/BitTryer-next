@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+// ユーザー情報テーブル
+model User {
+  id        String @id @default(cuid()) // ユーザーID（主キー）
+  client_id String @unique @default(cuid()) // クライアントID（外部公開用）
+  email     String @unique // メールアドレス（ログイン用）
+  password  String // パスワード（ハッシュ化）
+
+  name      String? // ユーザー名（任意）
+  slug      String? @unique @default(cuid()) // URLスラッグ（任意）
+  base_coin Decimal @default(100000) // 所持金（JPY）- デフォルト10万円
+
+  createdAt DateTime @default(now()) // アカウント作成日時
+  updatedAt DateTime @updatedAt // 最終更新日時
+
+  // リレーション
+  createdCoins Coin[]    @relation("CoinCreator") // 作成したコイン一覧
+  sessions     Session[] // ログインセッション一覧
+
+  @@map("users")
+}
+
+// ユーザーのログインセッション管理テーブル
+model Session {
+  id String @id @default(cuid()) // セッションID（主キー）
+
+  token   String @unique @default(cuid()) // セッショントークン（認証用）
+  user_id String // 所属ユーザーID
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  created_at DateTime @default(now()) // セッション作成日時
+  expires_at DateTime // セッション有効期限
+
+  @@map("sessions")
+}
+
+// 仮想通貨コイン情報テーブル
+model Coin {
+  id      String @id @default(cuid()) // コインID（主キー）
+  coin_id String @unique @default(cuid()) // コインID（外部公開用）
+
+  // === 基本情報 ===
+  name        String  @unique // コイン名（例：田中コイン）
+  symbol      String  @unique // シンボル（例：TANAKA）
+  description String? // コインの説明文（任意）
+
+  // === 作成者情報 ===
+  creator_id String // 作成者のユーザーID
+  creator    User   @relation("CoinCreator", fields: [creator_id], references: [id])
+
+  // === 発行量・供給量 ===
+  total_supply   Decimal @default(100000) // 最大発行量（10万枚）
+  current_supply Decimal @default(0) // 現在の流通量（0枚からスタート）
+
+  // === 価格情報 ===
+  initial_price Decimal @default(10) // 初期価格（10円）
+  current_price Decimal @default(10) // 現在価格（10円）
+
+  // === 24時間統計情報 ===
+  high_24h           Decimal @default(10) // 24時間最高価格（10円）
+  low_24h            Decimal @default(10) // 24時間最安価格（10円）
+  volume_24h         Decimal @default(0) // 24時間取引量（0円）
+  change_24h         Decimal @default(0) // 24時間変動額（0円）
+  change_24h_percent Decimal @default(0) // 24時間変動率（0%）
+
+  // === 市場情報 ===
+  market_cap Decimal @default(1000000) // 時価総額（100万円 = 10万枚 × 10円）
+  rank       Int?    @default(999) // ランキング（999位からスタート）
+
+  // === コイン設定・機能 ===
+  is_active    Boolean @default(true) // アクティブ状態（有効/無効）
+  is_tradeable Boolean @default(true) // 取引可能フラグ
+  is_mineable  Boolean @default(false) // マイニング可能フラグ（体験サイトなので無効）
+
+  // === 手数料設定 ===
+  trading_fee Decimal @default(0.001) // 取引手数料（0.1%）
+
+  // === タイムスタンプ ===
+  createdAt DateTime @default(now()) // コイン作成日時
+  updatedAt DateTime @updatedAt // 最終更新日時
+
+  @@map("coins")
+}
+
+// ユーザーのコイン所持量保存テーブル
+model Portfolio {
+  id      String @id @default(cuid()) // ポートフォリオID（主キー）
+  user_id String
+
+  coin_id String
+  amount  Decimal @default(0)
+
+  createdAt DateTime @default(now()) // 作成日時
+  updatedAt DateTime @updatedAt // 最終更新日時
+
+  @@map("portfolios")
+}
+
+model TradeHistory {
+  id         String @id @default(cuid()) // 取引履歴ID（主キー）
+  history_id String @unique @default(cuid()) // 取引履歴ID（外部公開用）
+  user_id    String
+
+  coin_id   String
+  amount    Decimal     @default(0)
+  price     Decimal     @default(0)
+  side      TradeType // 取引種別（buy/sell/send/catch）
+  author_id String? // 取引を行ったユーザーID（任意、送金時など）
+  status    TradeStatus @default(loading) // 取引ステータス（loading/completed/failed）
+
+  createdAt DateTime @default(now()) // 作成日時
+  updatedAt DateTime @updatedAt // 最終更新日時
+}
+
+// enum
+
+enum TradeType {
+  buy
+  sell
+  send
+  catch
+}
+
+enum TradeStatus {
+  loading
+  completed
+  failed
+}

@@ -12,7 +12,7 @@ export default function ActionButtons({
   return (
     <div className="flex flex-col sm:flex-row gap-4 pt-4 mb-10 text-center">
       <Link 
-        href="/"
+        href="/login"
         className="w-full md:w-1/2 px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors border">
         {primaryText}
       </Link>
