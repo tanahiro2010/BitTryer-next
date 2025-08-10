@@ -1,4 +1,4 @@
-import { Input } from "@/components/ui/input"
+import LoginForm from "@/components/layout/login/form"
 
 export default function LoginPage() {
     return (
@@ -8,8 +8,7 @@ export default function LoginPage() {
                     <div className="border rounded-lg p-3 w-1/2">
                         <h1 className="text-3xl font-bold text-center">ログイン</h1>
 
-                        <form action=""></form>
-                        <Input></Input>
+                        <LoginForm />
                     </div>
                 </div>
 
