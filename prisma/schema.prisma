@@ -27,10 +27,6 @@ model User {
   createdAt DateTime @default(now()) // アカウント作成日時
   updatedAt DateTime @updatedAt // 最終更新日時
 
-  // リレーション
-  createdCoins Coin[]    @relation("CoinCreator") // 作成したコイン一覧
-  sessions     Session[] // ログインセッション一覧
-
   @@map("users")
 }
 
@@ -40,7 +36,6 @@ model Session {
 
   token   String @unique @default(cuid()) // セッショントークン（認証用）
   user_id String // 所属ユーザーID
-  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   created_at DateTime @default(now()) // セッション作成日時
   expires_at DateTime // セッション有効期限
@@ -60,7 +55,6 @@ model Coin {
 
   // === 作成者情報 ===
   creator_id String // 作成者のユーザーID
-  creator    User   @relation("CoinCreator", fields: [creator_id], references: [id])
 
   // === 発行量・供給量 ===
   total_supply   Decimal @default(100000) // 最大発行量（10万枚）

@@ -31,20 +31,35 @@ export default function PriceCard() {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex justify-between items-center">
-            <CardTitle className="text-base sm:text-lg">リアルタイム価格</CardTitle>
-            <span className="text-xs sm:text-sm text-muted-foreground">模擬データ</span>
+            <CardTitle className="text-base sm:text-lg">
+              リアルタイム価格
+            </CardTitle>
+            <span className="text-xs sm:text-sm text-muted-foreground">
+              模擬データ
+            </span>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {mockPriceData.map((data, index) => (
-            <div key={index} className="flex justify-between items-center p-2 sm:p-3 bg-muted rounded-md">
+            <div
+              key={index}
+              className="flex justify-between items-center p-2 sm:p-3 bg-muted rounded-md"
+            >
               <div>
-                <div className="font-medium text-sm sm:text-base">{data.symbol}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">{data.name}</div>
+                <div className="font-medium text-sm sm:text-base">
+                  {data.symbol}
+                </div>
+                <div className="text-xs sm:text-sm text-muted-foreground">
+                  {data.name}
+                </div>
               </div>
               <div className="text-right">
-                <div className="font-medium text-sm sm:text-base">{data.price}</div>
-                <div className={`text-xs sm:text-sm ${data.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                <div className="font-medium text-sm sm:text-base">
+                  {data.price}
+                </div>
+                <div
+                  className={`text-xs sm:text-sm ${data.isPositive ? "text-green-600" : "text-red-600"}`}
+                >
                   {data.change}
                 </div>
               </div>

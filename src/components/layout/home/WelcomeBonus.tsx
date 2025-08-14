@@ -6,7 +6,8 @@ export default function WelcomeBonus() {
         <span className="text-blue-800 font-medium">初回登録特典</span>
       </div>
       <p className="text-blue-700 mt-1">
-        新規登録で<span className="font-bold text-xl">10万円分</span>のサイト内通貨をプレゼント！
+        新規登録で<span className="font-bold text-xl">10万円分</span>
+        のサイト内通貨をプレゼント！
       </p>
     </div>
   );
