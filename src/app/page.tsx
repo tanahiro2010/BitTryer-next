@@ -10,38 +10,40 @@ const features = [
   "ベーシックな取引体験",
   "API を利用した自動取引",
   "課金制サイト内通貨で疑似取引",
-  "幅広いシナリオでの取引体験"
+  "幅広いシナリオでの取引体験",
 ];
 
 const featureCards = [
   {
     icon: "₿",
     title: "安全な疑似環境",
-    description: "完全にゲーム内での取引体験。実際のお金を使わず、換金もできない安全な環境です",
+    description:
+      "完全にゲーム内での取引体験。実際のお金を使わず、換金もできない安全な環境です",
     bgColor: "bg-blue-100",
-    iconColor: "text-blue-600"
+    iconColor: "text-blue-600",
   },
   {
     icon: "¥",
     title: "サイト内通貨",
-    description: "初回10万円分プレゼント！課金でサイト内通貨を追加購入できます。※ゲーム内通貨のため換金はできません",
+    description:
+      "初回10万円分プレゼント！課金でサイト内通貨を追加購入できます。※ゲーム内通貨のため換金はできません",
     bgColor: "bg-green-100",
-    iconColor: "text-green-600"
+    iconColor: "text-green-600",
   },
   {
     icon: "API",
     title: "API取引対応",
     description: "プログラムによる自動取引を学習できます",
     bgColor: "bg-blue-100",
-    iconColor: "text-blue-600"
+    iconColor: "text-blue-600",
   },
   {
     icon: "📊",
     title: "リアルタイムデータ",
     description: "実際の市場に近いデータで学習できます",
     bgColor: "bg-blue-100",
-    iconColor: "text-blue-600"
-  }
+    iconColor: "text-blue-600",
+  },
 ];
 
 export default function Home() {
@@ -81,7 +83,9 @@ export default function Home() {
       {/* Features Section */}
       <div className="border-t py-16">
         <div className="text-center space-y-8">
-          <h2 className="text-2xl font-bold text-gray-900">なぜBitTryerを選ぶのか</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            なぜBitTryerを選ぶのか
+          </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {featureCards.map((feature, index) => (
