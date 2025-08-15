@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        console.log(user.userId);
+
         const session = await user.login(password);
         const cookieStore = await cookies();
         cookieStore.set("s-token", session.token, {
