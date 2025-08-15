@@ -40,7 +40,7 @@ model Session {
 
   token   String @unique @default(cuid()) // セッショントークン（認証用）
   user_id String // 所属ユーザーID
-  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [user_id], references: [client_id], onDelete: Cascade)
 
   created_at DateTime @default(now()) // セッション作成日時
   expires_at DateTime // セッション有効期限
