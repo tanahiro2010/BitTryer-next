@@ -118,9 +118,24 @@ class User implements IUser {
     });
   }
 
+  async deleteAllSessions(): Promise<void> {
+    await prisma.session.deleteMany({
+      where: {
+        user_id: this.userId,
+      }
+    });
+  }
+
   async login(password: string): Promise<BaseSession> {
     const isValid = await verifyPassword(password, this.user.password);
     if (!isValid) throw new Error("Invalid password");
+    const [_, sessions] = await Promise.all([this.cleanSessions(), this.getSessions()]);
+
+    if (sessions.length > 5) {
+      // 既存のセッションがある場合は、それを返す
+      const oldestSession = sessions.sort((a, b) => a.expires_at.getTime() - b.expires_at.getTime())[0]; // 一番古いセッションを取得
+      await this.logout(oldestSession.token); // 一番古いセッションをログアウト
+    }
 
     const session = await prisma.session.create({
       data: {
