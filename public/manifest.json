@@ -1,0 +1,46 @@
+{
+  "name": "BitTryer - 暗号資産取引プラットフォーム",
+  "short_name": "BitTryer",
+  "description": "疑似環境による暗号資産取引の経験プラットフォーム。安全な仮想環境でビットコイン取引を学習し、リアルタイムチャートと本格的な取引機能を体験できます。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a1a",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "ja",
+  "dir": "ltr",
+  "categories": ["finance", "education", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "BitTryer ホーム画面"
+    }
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+bittryer",
+      "url": "/handle?url=%s"
+    }
+  ]
+}
