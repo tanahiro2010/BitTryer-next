@@ -17,8 +17,10 @@ export async function POST(req: NextRequest) {
 
         console.log(user.userId);
 
-        const session = await user.login(password);
-        const cookieStore = await cookies();
+        const [session, cookieStore] = await Promise.all([
+            user.login(password),
+            cookies(),
+        ]);
         cookieStore.set("s-token", session.token, {
             httpOnly: true,
             path: "/",
