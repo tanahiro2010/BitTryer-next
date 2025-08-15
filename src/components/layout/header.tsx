@@ -17,7 +17,7 @@ export default function Header({ login }: HeaderProps) {
 
       <ul className="flex space-x-4">
         <li className="hover:underline hover:text-gray-800">
-          {login ? <a href="/profile">Profile</a> : <a href="/login">Login</a>}
+          { login ? <a href="/profile">Profile</a> : <a href="/login">Login</a> }
         </li>
       </ul>
     </header>
