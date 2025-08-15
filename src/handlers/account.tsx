@@ -33,7 +33,7 @@ async function handleLogin(e: FormEvent<HTMLFormElement>) {
       throw new Error(body.error);
     }
 
-    window.location.href = "/dashboard";
+    window.location.href = "/profile";
   } catch (e) {
     toast.error("ログインに失敗しました");
     console.error("Login error:", e);
