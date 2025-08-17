@@ -28,5 +28,22 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  
+  const payload = await req.json();
+  const user = await User.current();
+  if (!user) return NextResponse.json({ error: true, message: "User not found" }, { status: 404 });
+
+  // ユーザー情報の更新処理
+  try {
+    const updatedUser = await user.update(payload);
+    return NextResponse.json({
+      error: false,
+      message: "User updated successfully",
+      data: { user: updatedUser },
+    });
+  } catch (error) {
+    return NextResponse.json({
+      error: true,
+      message: `Failed to update user: ${(error as Error).message}`,
+    });
+  }
 }
