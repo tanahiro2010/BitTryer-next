@@ -26,3 +26,7 @@ export async function GET(req: NextRequest) {
     data: { user: user },
   });
 }
+
+export async function PUT(req: NextRequest) {
+  
+}
