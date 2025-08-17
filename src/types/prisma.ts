@@ -230,12 +230,11 @@ export type CoinSelect = {
 // Create types (ID等を除いた作成用 - defaultがあるフィールドも除外)
 export type CreateUser = Omit<
   BaseUser,
-  "id" | "client_id" | "slug" | "base_coin" | "createdAt" | "updatedAt"
+  "id" | "slug" | "createdAt" | "updatedAt"
 >;
 export type CreateCoin = Omit<
   BaseCoin,
-  | "id" 
-  | "coin_id" 
+  | "id"
   | "total_supply"
   | "current_supply"
   | "initial_price"
@@ -256,11 +255,11 @@ export type CreateCoin = Omit<
 >;
 export type CreatePortfolio = Omit<
   BasePortfolio,
-  "id" | "amount" | "createdAt" | "updatedAt"
+  "id" | "createdAt" | "updatedAt"
 >;
 export type CreateTradeHistory = Omit<
   BaseTradeHistory,
-  "id" | "history_id" | "amount" | "price" | "status" | "createdAt" | "updatedAt"
+  "id" | "history_id" | "createdAt" | "updatedAt"
 >;
 
 // Update types (更新可能フィールドのみ)
