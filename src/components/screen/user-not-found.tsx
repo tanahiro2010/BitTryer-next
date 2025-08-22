@@ -1,5 +1,6 @@
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import SearchForm from "../layout/search-form";
 
 export default function UserNotFound() {
     return (
@@ -13,10 +14,9 @@ export default function UserNotFound() {
                 <span className="text-gray-500">Please check the user ID and try again.</span>
             </div>
 
-            <form action="/search" method="get" className="flex items-center justify-center mt-4 p-2">
-                <Input type="text" name="q" placeholder="Enter user ID" />
-                <Button type="submit" className="ml-2">Search</Button>
-            </form>
+            <div className="mt-6">
+                <SearchForm defaultValue="" />
+            </div>
         </div>
     );
 }
