@@ -1,12 +1,18 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface HeaderProps {
   login?: boolean;
 }
 
 export default function Header({ login }: HeaderProps) {
+  const pathname = usePathname();
+  const isProfilePage = pathname.includes("profile");
+
   return (
-    <header className="border-b py-3 px-5 flex justify-between items-center">
+    <>
+    <header className={`border-b py-3 px-5 flex justify-between items-center ${isProfilePage ? "hidden" : ""}`}>
       <h1 className="text-2xl font-bold">
         <Link href="/">Bittryer</Link>
       </h1>
@@ -21,5 +27,8 @@ export default function Header({ login }: HeaderProps) {
         </li>
       </ul>
     </header>
+
+    {!isProfilePage && <div className="pb-5"></div>}
+    </>
   );
 }

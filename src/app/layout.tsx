@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "@/styles/globals.css";
@@ -102,18 +102,7 @@ export const metadata: Metadata = {
   applicationName: "BitTryer",
   referrer: "origin-when-cross-origin",
   colorScheme: "light dark",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
-
-  // モバイル対応
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
+    // themeColorはviewportエクスポートに移動
 
   // 検索エンジン認証
   verification: {
@@ -141,6 +130,16 @@ export const metadata: Metadata = {
   // ブックマーク
   bookmarks: ["https://bittryer.com/favorites"],
 };
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+}
 
 export default async function RootLayout({
   children,
@@ -153,7 +152,9 @@ export default async function RootLayout({
     <html lang="ja">
       <body className={inter.className}>
         <Header login={!!user} />
-        <main className="pt-16">{children}</main>
+        <main>
+          {children}
+        </main>
 
         <Toaster />
       </body>

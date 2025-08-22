@@ -63,14 +63,45 @@ interface IUserStatic {
 }
 
 /**
+ * 文字列フィールド用の検索条件
+ */
+type StringFilter = {
+  equals?: string;
+  in?: string[];
+  notIn?: string[];
+  contains?: string;
+  startsWith?: string;
+  endsWith?: string;
+  not?: string | StringFilter;
+  mode?: 'default' | 'insensitive';
+} | string;
+
+/**
+ * 日付フィールド用の検索条件
+ */
+type DateTimeFilter = {
+  equals?: Date;
+  in?: Date[];
+  notIn?: Date[];
+  lt?: Date;
+  lte?: Date;
+  gt?: Date;
+  gte?: Date;
+  not?: Date | DateTimeFilter;
+} | Date;
+
+/**
  * ユーザー検索条件の型定義
  */
 type UserWhereInput = Partial<{
-  client_id: string;
-  email: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
+  client_id: StringFilter;
+  email: StringFilter;
+  name: StringFilter;
+  createdAt: DateTimeFilter;
+  updatedAt: DateTimeFilter;
+  AND?: UserWhereInput[];
+  OR?: UserWhereInput[];
+  NOT?: UserWhereInput[];
 }>;
 
 class User implements IUser {

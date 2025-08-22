@@ -38,3 +38,5 @@ class BitCoin {
         this.coin = coin;
     }
 }
+
+export default BitCoin;
