@@ -1,7 +1,11 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Search, User as UserIcon, Calendar } from "lucide-react";
+import SearchForm from "@/components/layout/search-form";
 import User from "@/lib/user";
 import Link from "next/link";
-import { Search, User as UserIcon, Calendar } from "lucide-react";
+
+
+
 
 interface SearchPageProps {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -20,9 +24,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             {/* ヘッダーセクション */}
             <div className="mb-8">
-                <div className="flex items-center gap-3 mb-4">
-                    <Search className="h-8 w-8 text-blue-600" />
-                    <h1 className="text-3xl font-bold text-gray-900">検索結果</h1>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        <Search className="h-8 w-8 text-blue-600" />
+                        <h1 className="text-3xl font-bold text-gray-900">ユーザー検索</h1>
+                    </div>
+                    <SearchForm defaultValue={q as string} />
                 </div>
                 
                 {q && (
@@ -42,10 +49,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             </div>
 
             {/* 検索結果 */}
-            {users.length === 0 ? (
+            {!q ? (
+                <div className="text-center py-16">
+                    <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">ユーザーを検索してください</h3>
+                    <p className="text-gray-600">上の検索フォームにユーザー名を入力して検索を開始してください。</p>
+                </div>
+            ) : users.length === 0 ? (
                 <div className="text-center py-16">
                     <UserIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">ユーザーが見つかりませんでした</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">「{q}」に一致するユーザーが見つかりませんでした</h3>
                     <p className="text-gray-600">別のキーワードで検索してみてください。</p>
                 </div>
             ) : (
