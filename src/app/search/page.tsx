@@ -4,14 +4,14 @@ import Link from "next/link";
 import { Search, User as UserIcon, Calendar } from "lucide-react";
 
 interface SearchPageProps {
-    searchParams: { [key: string]: string | string[] | undefined }
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-    const query = searchParams.q;
+    const { q } = await searchParams;
     const users = await User.some({
         name: {
-            contains: query as string,
+            contains: q as string,
             mode: "insensitive"
         }
     });
@@ -25,11 +25,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                     <h1 className="text-3xl font-bold text-gray-900">検索結果</h1>
                 </div>
                 
-                {query && (
+                {q && (
                     <div className="flex items-center gap-2 mb-4">
                         <span className="text-gray-600">検索クエリ:</span>
                         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                            "{query}"
+                            "{q}"
                         </span>
                     </div>
                 )}
