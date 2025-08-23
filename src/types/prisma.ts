@@ -230,9 +230,15 @@ export type CoinSelect = {
 
 // Create types (ID等を除いた作成用 - defaultがあるフィールドも除外)
 export type CreateUser = Omit<
-  Partial<BaseUser>,
+  BaseUser,
   "id" | "client_id" | "slug" | "createdAt" | "updatedAt"
->;
+> & {
+  email: string;
+  password: string;
+  description?: string | null;
+  name?: string | null;
+  base_coin?: Decimal;
+};
 export type CreateCoin = Omit<
   BaseCoin,
   | "id"
