@@ -264,7 +264,7 @@ export type CreateTradeHistory = Omit<
 >;
 
 // Update types (更新可能フィールドのみ)
-export type UpdateUser = Partial<Pick<BaseUser, "name" | "slug" | "base_coin">>;
+export type UpdateUser = Partial<Pick<BaseUser, "name" | "description" | "base_coin">>;
 export type UpdateCoin = Partial<
   Pick<
     BaseCoin,
