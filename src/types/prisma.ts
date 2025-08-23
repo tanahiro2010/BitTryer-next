@@ -9,6 +9,7 @@ export interface BaseUser {
   client_id: string;
   email: string;
   password: string;
+  description: string | null;
   name: string | null;
   slug: string | null;
   base_coin: Decimal;
