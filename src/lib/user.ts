@@ -1,5 +1,5 @@
 import { hashPassword, verifyPassword } from "@/utils/encode";
-import { BaseSession, CreateUser, UpdateUser } from "@/types/prisma";
+import { BaseSession, CreateUser } from "@/types/prisma";
 import { generateToken } from "@/utils/token";
 import { BaseUser } from "@/types/prisma";
 import { cookies } from "next/headers";
