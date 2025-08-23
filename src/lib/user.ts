@@ -1,5 +1,5 @@
 import { hashPassword, verifyPassword } from "@/utils/encode";
-import { BaseSession, CreateUser } from "@/types/prisma";
+import { BaseSession, CreateUser, UpdateUser } from "@/types/prisma";
 import { generateToken } from "@/utils/token";
 import { BaseUser } from "@/types/prisma";
 import { cookies } from "next/headers";
@@ -15,7 +15,7 @@ interface IUser {
   readonly user: Readonly<BaseUser>;
 
   // ==================== セッション管理メソッド ====================
-  
+
   /** ユーザーのセッション一覧を取得 */
   getSessions(): Promise<BaseSession[]>;
 
@@ -47,7 +47,7 @@ interface IUser {
  */
 interface IUserStatic {
   /** 新規ユーザー作成 */
-  new(payload: CreateUser): Promise<User>;
+  new (payload: CreateUser): Promise<User>;
 
   /** ユーザー取得（ID or メール） */
   get(userId: string | null, email?: string | null): Promise<User | null>;
@@ -73,7 +73,7 @@ type StringFilter = {
   startsWith?: string;
   endsWith?: string;
   not?: string | StringFilter;
-  mode?: 'default' | 'insensitive';
+  mode?: "default" | "insensitive";
 } | string;
 
 /**
@@ -104,6 +104,16 @@ type UserWhereInput = Partial<{
   NOT?: UserWhereInput[];
 }>;
 
+const select = {
+  client_id: true,
+  email: true,
+  description: true,
+  password: true,
+  name: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
 class User implements IUser {
   public readonly userId: string;
   public readonly user: Readonly<BaseUser>;
@@ -128,13 +138,13 @@ class User implements IUser {
       // 元オブジェクトを変更せず新しいオブジェクトを作成
       const hashedPayload = {
         ...payload,
-        password: await hashPassword(payload.password)
+        password: await hashPassword(payload.password),
       };
-      
+
       const createdUser = await prisma.user.create({
         data: hashedPayload,
       });
-      
+
       return new User(createdUser);
     } catch (error) {
       throw new Error(`Failed to create user: ${(error as Error).message}`);
@@ -148,7 +158,10 @@ class User implements IUser {
    * @returns Userインスタンスまたはnull
    * @throws 両方のパラメータがnullの場合
    */
-  static async get(userId: string | null, email?: string | null): Promise<User | null> {
+  static async get(
+    userId: string | null,
+    email?: string | null,
+  ): Promise<User | null> {
     if (!userId && !email) {
       throw new Error("User ID or email is required for existing users");
     }
@@ -162,14 +175,7 @@ class User implements IUser {
       const result = await prisma.user.findFirst({
         where,
         // 必要なフィールドのみ取得してパフォーマンス向上
-        select: {
-          client_id: true,
-          email: true,
-          password: true,
-          name: true,
-          createdAt: true,
-          updatedAt: true,
-        }
+        select
       });
 
       if (!result) return null;
@@ -195,19 +201,19 @@ class User implements IUser {
         where: {
           token: sToken,
           expires_at: {
-            gt: new Date() // 有効期限内のセッションのみ
-          }
+            gt: new Date(), // 有効期限内のセッションのみ
+          },
         },
-        select: { user_id: true }
+        select: { user_id: true },
       });
 
       if (!session) {
         // 期限切れセッションを削除
         await prisma.session.deleteMany({
-          where: { 
+          where: {
             token: sToken,
-            expires_at: { lt: new Date() }
-          }
+            expires_at: { lt: new Date() },
+          },
         });
         return null;
       }
@@ -228,17 +234,10 @@ class User implements IUser {
   static async all(): Promise<User[]> {
     try {
       const users = await prisma.user.findMany({
-        select: {
-          client_id: true,
-          email: true,
-          password: true,
-          name: true,
-          createdAt: true,
-          updatedAt: true,
-        }
+        select
       });
-      
-      return users.map(user => new User(user as BaseUser));
+
+      return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to get all users: ${(error as Error).message}`);
     }
@@ -253,17 +252,10 @@ class User implements IUser {
     try {
       const users = await prisma.user.findMany({
         where,
-        select: {
-          client_id: true,
-          email: true,
-          password: true,
-          name: true,
-          createdAt: true,
-          updatedAt: true,
-        }
+        select,
       });
-      
-      return users.map(user => new User(user as BaseUser));
+
+      return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to search users: ${(error as Error).message}`);
     }
@@ -281,10 +273,10 @@ class User implements IUser {
         where: {
           user_id: this.userId,
           expires_at: {
-            gt: new Date() // 有効なセッションのみ
-          }
+            gt: new Date(), // 有効なセッションのみ
+          },
         },
-        orderBy: { expires_at: 'desc' }
+        orderBy: { expires_at: "desc" },
       });
 
       return sessions;
@@ -303,11 +295,13 @@ class User implements IUser {
           user_id: this.userId,
           expires_at: {
             lt: new Date(), // 現在時刻より前のセッションを削除
-          }
-        }
+          },
+        },
       });
 
-      console.log(`Cleaned ${deleteResult.count} expired sessions for user ${this.userId}`);
+      console.log(
+        `Cleaned ${deleteResult.count} expired sessions for user ${this.userId}`,
+      );
     } catch (error) {
       throw new Error(`Failed to clean sessions: ${(error as Error).message}`);
     }
@@ -321,12 +315,16 @@ class User implements IUser {
       const deleteResult = await prisma.session.deleteMany({
         where: {
           user_id: this.userId,
-        }
+        },
       });
 
-      console.log(`Deleted ${deleteResult.count} sessions for user ${this.userId}`);
+      console.log(
+        `Deleted ${deleteResult.count} sessions for user ${this.userId}`,
+      );
     } catch (error) {
-      throw new Error(`Failed to delete all sessions: ${(error as Error).message}`);
+      throw new Error(
+        `Failed to delete all sessions: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -347,18 +345,18 @@ class User implements IUser {
 
       // 期限切れセッションのクリーンアップと現在のセッション取得
       const [_, sessions] = await Promise.all([
-        this.cleanSessions(), 
-        this.getSessions()
+        this.cleanSessions(),
+        this.getSessions(),
       ]);
 
       // セッション数制限（5個まで）
       if (sessions.length >= 5) {
-        const oldestSession = sessions.sort((a, b) => 
+        const oldestSession = sessions.sort((a, b) =>
           a.expires_at.getTime() - b.expires_at.getTime()
         )[0];
-        
+
         await prisma.session.delete({
-          where: { token: oldestSession.token }
+          where: { token: oldestSession.token },
         });
       }
 
@@ -387,8 +385,8 @@ class User implements IUser {
         await prisma.session.deleteMany({
           where: {
             user_id: this.userId,
-            token: token
-          }
+            token: token,
+          },
         });
       } else {
         // 全セッション削除
@@ -409,7 +407,8 @@ class User implements IUser {
   async update(payload: Partial<CreateUser>): Promise<User> {
     try {
       const updateData = { ...payload };
-      
+      console.log("Updating user:", updateData);
+
       // パスワードが含まれている場合はハッシュ化
       if (updateData.password) {
         updateData.password = await hashPassword(updateData.password);
