@@ -9,6 +9,7 @@ export interface BaseUser {
   client_id: string;
   email: string;
   password: string;
+  description: string | null;
   name: string | null;
   slug: string | null;
   base_coin: Decimal;
@@ -229,7 +230,7 @@ export type CoinSelect = {
 
 // Create types (ID等を除いた作成用 - defaultがあるフィールドも除外)
 export type CreateUser = Omit<
-  BaseUser,
+  Partial<BaseUser>,
   "id" | "client_id" | "slug" | "createdAt" | "updatedAt"
 >;
 export type CreateCoin = Omit<
@@ -263,7 +264,7 @@ export type CreateTradeHistory = Omit<
 >;
 
 // Update types (更新可能フィールドのみ)
-export type UpdateUser = Partial<Pick<BaseUser, "name" | "slug" | "base_coin">>;
+export type UpdateUser = Partial<Pick<BaseUser, "name" | "description" | "base_coin">>;
 export type UpdateCoin = Partial<
   Pick<
     BaseCoin,

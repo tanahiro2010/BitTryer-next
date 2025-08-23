@@ -20,9 +20,10 @@ model User {
   email     String @unique // メールアドレス（ログイン用）
   password  String // パスワード（ハッシュ化）
 
-  name      String? // ユーザー名（任意）
-  slug      String? @unique @default(cuid()) // URLスラッグ（任意）
-  base_coin Decimal @default(100000) // 所持金（JPY）- デフォルト10万円
+  name        String? // ユーザー名（任意）
+  slug        String? @unique @default(cuid()) // URLスラッグ（任意）
+  description String? // ユーザーの説明文（任意）
+  base_coin   Decimal @default(100000) // 所持金（JPY）- デフォルト10万円
 
   createdAt DateTime @default(now()) // アカウント作成日時
   updatedAt DateTime @updatedAt // 最終更新日時
