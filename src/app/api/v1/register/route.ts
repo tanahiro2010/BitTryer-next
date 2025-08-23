@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         name
     } = await req.json();
 
-    const payload: CreateUser = { email, password, name, base_coin: BEGINNING_BALANCE };
+    const payload: CreateUser = { email, password, name, description: null, base_coin: BEGINNING_BALANCE };
 
     try {
         const user = await User.new(payload);
