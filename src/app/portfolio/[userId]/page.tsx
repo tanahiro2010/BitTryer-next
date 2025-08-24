@@ -1,5 +1,4 @@
-import { Card, CardTitle, CardContent, CardHeader, CardDescription } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardTitle, CardContent, CardHeader } from "@/components/ui/card";
 import UserNotFound from "@/components/screen/user-not-found";
 import User from "@/lib/user";
 import { 
