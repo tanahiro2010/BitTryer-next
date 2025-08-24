@@ -109,6 +109,7 @@ const select = {
   email: true,
   description: true,
   password: true,
+  base_coin: true,
   name: true,
   createdAt: true,
   updatedAt: true,
