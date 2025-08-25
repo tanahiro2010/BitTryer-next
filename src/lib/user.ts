@@ -4,6 +4,8 @@ import { generateToken } from "@/utils/token";
 import { BaseUser } from "@/types/prisma";
 import { cookies } from "next/headers";
 import { prisma } from "@/data/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
+import BitCoin from "./coin";
 
 /**
  * ユーザー情報と認証機能を提供するインターフェース
@@ -494,6 +496,59 @@ class User implements IUser {
    */
   async resetPassword(password: string): Promise<User> {
     return await this.update({ password });
+  }
+
+
+
+  // コイン関連
+  async buy(coinId: string, amount: number, pricePerCoin?: number) {
+    const bitcoin = await BitCoin.get(coinId);
+    if (!bitcoin) throw new Error("Coin not found");
+
+    const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);
+    const totalCost = amount * currentPrice;
+
+    if (totalCost > Number(this.user.base_coin)) {
+      throw new Error("Insufficient funds");
+    }
+
+    // 購入処理
+    const result = await bitcoin.buy(this.userId, amount, pricePerCoin);
+    
+    // ユーザーの残高を更新
+    const newBalance = new Decimal(this.user.base_coin).minus(totalCost);
+    const updatedUser = await this.update({
+      base_coin: newBalance
+    });
+
+    return {
+      coin: result.coin,
+      history: result.history,
+      user: updatedUser
+    };
+  }
+
+  async sell(coinId: string, amount: number, pricePerCoin?: number) {
+    const bitcoin = await BitCoin.get(coinId);
+    if (!bitcoin) throw new Error("Coin not found");
+
+    // 売却処理
+    const result = await bitcoin.sell(this.userId, amount, pricePerCoin);
+    
+    // ユーザーの残高を更新（売却益を追加）
+    const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);
+    const totalEarning = amount * currentPrice;
+    const newBalance = new Decimal(this.user.base_coin).plus(totalEarning);
+    
+    const updatedUser = await this.update({
+      base_coin: newBalance
+    });
+
+    return {
+      coin: result.coin,
+      history: result.history,
+      user: updatedUser
+    };
   }
 }
 
