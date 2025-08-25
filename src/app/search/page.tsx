@@ -14,15 +14,44 @@ interface SearchPageProps {
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q, limit, page } = await searchParams;
+  
+  if (!q) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Search className="h-8 w-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">ユーザー検索</h1>
+            </div>
+            <SearchForm />
+          </div>
+        </div>
+        
+        <div className="text-center py-16">
+          <Search className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">ユーザーを検索してください</h3>
+          <p className="text-gray-600">上の検索フォームにユーザー名を入力して検索を開始してください。</p>
+        </div>
+      </div>
+    );
+  }
+
   const users = await User.some(
     {
       name: {
-        contains: q ?? "",
+        contains: q,
         mode: "insensitive",
       },
     },
-    parseInt(limit ?? "20"),
-    parseInt(page ?? "0"),
+    {
+      limit: parseInt(limit ?? "20"),
+      page: parseInt(page ?? "0"),
+      orderBy: {
+        field: 'createdAt',
+        direction: 'desc'
+      }
+    }
   );
 
   return (

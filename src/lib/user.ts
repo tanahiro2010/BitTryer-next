@@ -4,6 +4,8 @@ import { generateToken } from "@/utils/token";
 import { BaseUser } from "@/types/prisma";
 import { cookies } from "next/headers";
 import { prisma } from "@/data/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
+import BitCoin from "./coin";
 
 /**
  * ユーザー情報と認証機能を提供するインターフェース
@@ -59,7 +61,17 @@ interface IUserStatic {
   all(): Promise<User[]>;
 
   /** 条件検索でユーザー取得 */
-  some(where: Record<keyof BaseUser, any>): Promise<User[]>;
+  some(where: UserWhereInput, options?: {
+    limit?: number;
+    page?: number;
+    orderBy?: {
+      field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
+      direction: 'asc' | 'desc';
+    };
+  }): Promise<User[]>;
+
+  /** 検索条件に一致するユーザー数を取得 */
+  count(where: UserWhereInput): Promise<number>;
 }
 
 /**
@@ -109,6 +121,7 @@ type UserWhereInput = Partial<{
 }>;
 
 const select = {
+  id: true,
   client_id: true,
   email: true,
   description: true,
@@ -117,7 +130,7 @@ const select = {
   name: true,
   createdAt: true,
   updatedAt: true,
-};
+} as const;
 
 class User implements IUser {
   public readonly userId: string;
@@ -249,26 +262,64 @@ class User implements IUser {
   }
 
   /**
-   * 条件検索でユーザー取得
+   * 条件検索でユーザー取得（ページネーション対応）
    * @param where 検索条件
+   * @param options 検索オプション
    * @returns 条件に一致するUserインスタンスの配列
    */
   static async some(
     where: UserWhereInput,
-    limit?: number,
-    page: number = 0,
+    options?: {
+      limit?: number;
+      page?: number;
+      orderBy?: {
+        field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
+        direction: 'asc' | 'desc';
+      };
+    }
   ): Promise<User[]> {
+    const { limit, page = 0, orderBy } = options || {};
+    const take = limit || 10;
+    const skip = page * take;
+
     try {
+      // 空の検索条件をチェック
+      if (!where || Object.keys(where).length === 0) {
+        throw new Error("Search conditions are required");
+      }
+
+      const orderByClause = orderBy 
+        ? { [orderBy.field]: orderBy.direction }
+        : { createdAt: 'desc' as const };
+
       const users = await prisma.user.findMany({
         where,
         select,
-        take: limit,
-        skip: page * (limit || 10), // ページネーション
+        take,
+        skip,
+        orderBy: orderByClause,
       });
 
       return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to search users: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * 検索条件に一致するユーザー数を取得
+   * @param where 検索条件
+   * @returns 一致するユーザーの総数
+   */
+  static async count(where: UserWhereInput): Promise<number> {
+    try {
+      if (!where || Object.keys(where).length === 0) {
+        return await prisma.user.count();
+      }
+
+      return await prisma.user.count({ where });
+    } catch (error) {
+      throw new Error(`Failed to count users: ${(error as Error).message}`);
     }
   }
 
@@ -445,6 +496,59 @@ class User implements IUser {
    */
   async resetPassword(password: string): Promise<User> {
     return await this.update({ password });
+  }
+
+
+
+  // コイン関連
+  async buy(coinId: string, amount: number, pricePerCoin?: number) {
+    const bitcoin = await BitCoin.get(coinId);
+    if (!bitcoin) throw new Error("Coin not found");
+
+    const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);
+    const totalCost = amount * currentPrice;
+
+    if (totalCost > Number(this.user.base_coin)) {
+      throw new Error("Insufficient funds");
+    }
+
+    // 購入処理
+    const result = await bitcoin.buy(this.userId, amount, pricePerCoin);
+    
+    // ユーザーの残高を更新
+    const newBalance = new Decimal(this.user.base_coin).minus(totalCost);
+    const updatedUser = await this.update({
+      base_coin: newBalance
+    });
+
+    return {
+      coin: result.coin,
+      history: result.history,
+      user: updatedUser
+    };
+  }
+
+  async sell(coinId: string, amount: number, pricePerCoin?: number) {
+    const bitcoin = await BitCoin.get(coinId);
+    if (!bitcoin) throw new Error("Coin not found");
+
+    // 売却処理
+    const result = await bitcoin.sell(this.userId, amount, pricePerCoin);
+    
+    // ユーザーの残高を更新（売却益を追加）
+    const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);
+    const totalEarning = amount * currentPrice;
+    const newBalance = new Decimal(this.user.base_coin).plus(totalEarning);
+    
+    const updatedUser = await this.update({
+      base_coin: newBalance
+    });
+
+    return {
+      coin: result.coin,
+      history: result.history,
+      user: updatedUser
+    };
   }
 }
 
