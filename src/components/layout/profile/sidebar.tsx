@@ -71,7 +71,7 @@ export default function AppSidebar() {
             <div className="w-8 h-8 rounded-md flex items-center justify-center">
               {/* <span className="text-white font-semibold text-sm">B</span> */}
               <Image
-                src="/bit.png"
+                src="/assets/icon.png"
                 alt=""
                 className="rounded"
                 width={logoSize}
