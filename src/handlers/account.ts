@@ -55,16 +55,16 @@ async function handleRegister(e: FormEvent<HTMLFormElement>) {
   const payload = {
     email,
     password,
-    name
-  }
+    name,
+  };
 
   try {
     const response = await fetch("/api/v1/register", {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: {
-            'Content-Type': 'application/json'
-        }
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
     const body = await response.json();
 

@@ -102,7 +102,7 @@ export const metadata: Metadata = {
   applicationName: "BitTryer",
   referrer: "origin-when-cross-origin",
   colorScheme: "light dark",
-    // themeColorはviewportエクスポートに移動
+  // themeColorはviewportエクスポートに移動
 
   // 検索エンジン認証
   verification: {
@@ -139,7 +139,7 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
-}
+};
 
 export default async function RootLayout({
   children,
@@ -152,9 +152,7 @@ export default async function RootLayout({
     <html lang="ja">
       <body className={inter.className}>
         <Header login={!!user} />
-        <main>
-          {children}
-        </main>
+        <main>{children}</main>
 
         <Toaster />
       </body>

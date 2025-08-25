@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const payload = await req.json();
   const user = await User.current();
-  if (!user) return NextResponse.json({ error: true, message: "User not found" }, { status: 404 });
+  if (!user)
+    return NextResponse.json(
+      { error: true, message: "User not found" },
+      { status: 404 },
+    );
 
   // ユーザー情報の更新処理
   try {

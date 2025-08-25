@@ -11,12 +11,22 @@ function DesktopRegisterForm() {
       <Label htmlFor="email" className="mt-4">
         メールアドレス
       </Label>
-      <Input type="email" placeholder="メールアドレス" name="email" className="mt-2" />
+      <Input
+        type="email"
+        placeholder="メールアドレス"
+        name="email"
+        className="mt-2"
+      />
 
       <Label htmlFor="password" className="mt-4">
         パスワード
       </Label>
-      <Input type="password" placeholder="パスワード" name="password" className="mt-2" />
+      <Input
+        type="password"
+        placeholder="パスワード"
+        name="password"
+        className="mt-2"
+      />
 
       <Label htmlFor="name" className="mt-4">
         名前
