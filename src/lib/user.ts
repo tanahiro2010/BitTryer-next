@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/data/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import BitCoin from "./coin";
+import History from "./history";
 
 /**
  * ユーザー情報と認証機能を提供するインターフェース
@@ -65,8 +66,8 @@ interface IUserStatic {
     limit?: number;
     page?: number;
     orderBy?: {
-      field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
-      direction: 'asc' | 'desc';
+      field: keyof Pick<BaseUser, "createdAt" | "updatedAt" | "name">;
+      direction: "asc" | "desc";
     };
   }): Promise<User[]>;
 
@@ -79,15 +80,15 @@ interface IUserStatic {
  */
 type StringFilter =
   | {
-      equals?: string;
-      in?: string[];
-      notIn?: string[];
-      contains?: string;
-      startsWith?: string;
-      endsWith?: string;
-      not?: string | StringFilter;
-      mode?: "default" | "insensitive";
-    }
+    equals?: string;
+    in?: string[];
+    notIn?: string[];
+    contains?: string;
+    startsWith?: string;
+    endsWith?: string;
+    not?: string | StringFilter;
+    mode?: "default" | "insensitive";
+  }
   | string;
 
 /**
@@ -95,15 +96,15 @@ type StringFilter =
  */
 type DateTimeFilter =
   | {
-      equals?: Date;
-      in?: Date[];
-      notIn?: Date[];
-      lt?: Date;
-      lte?: Date;
-      gt?: Date;
-      gte?: Date;
-      not?: Date | DateTimeFilter;
-    }
+    equals?: Date;
+    in?: Date[];
+    notIn?: Date[];
+    lt?: Date;
+    lte?: Date;
+    gt?: Date;
+    gte?: Date;
+    not?: Date | DateTimeFilter;
+  }
   | Date;
 
 /**
@@ -119,6 +120,12 @@ type UserWhereInput = Partial<{
   OR?: UserWhereInput[];
   NOT?: UserWhereInput[];
 }>;
+
+interface TradeReturn {
+  coin: BitCoin;
+  history: History;
+  user: User;
+}
 
 const select = {
   id: true,
@@ -273,10 +280,10 @@ class User implements IUser {
       limit?: number;
       page?: number;
       orderBy?: {
-        field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
-        direction: 'asc' | 'desc';
+        field: keyof Pick<BaseUser, "createdAt" | "updatedAt" | "name">;
+        direction: "asc" | "desc";
       };
-    }
+    },
   ): Promise<User[]> {
     const { limit, page = 0, orderBy } = options || {};
     const take = limit || 10;
@@ -288,9 +295,9 @@ class User implements IUser {
         throw new Error("Search conditions are required");
       }
 
-      const orderByClause = orderBy 
+      const orderByClause = orderBy
         ? { [orderBy.field]: orderBy.direction }
-        : { createdAt: 'desc' as const };
+        : { createdAt: "desc" as const };
 
       const users = await prisma.user.findMany({
         where,
@@ -498,10 +505,28 @@ class User implements IUser {
     return await this.update({ password });
   }
 
-
-
   // コイン関連
-  async buy(coinId: string, amount: number, pricePerCoin?: number) {
+  async pullBaseCoin(coin: number): Promise<BaseUser> {
+    try {
+      const result = await prisma.user.update({
+        where: { id: this.userId },
+        data: {
+          base_coin: {
+            increment: coin,
+          },
+        },
+      });
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to pull base coin: ${(error as Error).message}`);
+    }
+  }
+
+  async buy(
+    coinId: string,
+    amount: number,
+    pricePerCoin?: number,
+  ): Promise<TradeReturn> {
     const bitcoin = await BitCoin.get(coinId);
     if (!bitcoin) throw new Error("Coin not found");
 
@@ -514,40 +539,44 @@ class User implements IUser {
 
     // 購入処理
     const result = await bitcoin.buy(this.userId, amount, pricePerCoin);
-    
+
     // ユーザーの残高を更新
     const newBalance = new Decimal(this.user.base_coin).minus(totalCost);
     const updatedUser = await this.update({
-      base_coin: newBalance
+      base_coin: newBalance,
     });
 
     return {
       coin: result.coin,
       history: result.history,
-      user: updatedUser
+      user: updatedUser,
     };
   }
 
-  async sell(coinId: string, amount: number, pricePerCoin?: number) {
+  async sell(
+    coinId: string,
+    amount: number,
+    pricePerCoin?: number,
+  ): Promise<TradeReturn> {
     const bitcoin = await BitCoin.get(coinId);
     if (!bitcoin) throw new Error("Coin not found");
 
     // 売却処理
     const result = await bitcoin.sell(this.userId, amount, pricePerCoin);
-    
+
     // ユーザーの残高を更新（売却益を追加）
     const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);
     const totalEarning = amount * currentPrice;
     const newBalance = new Decimal(this.user.base_coin).plus(totalEarning);
-    
+
     const updatedUser = await this.update({
-      base_coin: newBalance
+      base_coin: newBalance,
     });
 
     return {
       coin: result.coin,
       history: result.history,
-      user: updatedUser
+      user: updatedUser,
     };
   }
 }

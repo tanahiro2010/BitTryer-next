@@ -244,8 +244,6 @@ export type CreateCoin = Omit<
   | "id"
   | "total_supply"
   | "current_supply"
-  | "initial_price"
-  | "current_price"
   | "high_24h"
   | "low_24h"
   | "volume_24h"
