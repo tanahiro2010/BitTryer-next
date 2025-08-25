@@ -65,30 +65,34 @@ interface IUserStatic {
 /**
  * 文字列フィールド用の検索条件
  */
-type StringFilter = {
-  equals?: string;
-  in?: string[];
-  notIn?: string[];
-  contains?: string;
-  startsWith?: string;
-  endsWith?: string;
-  not?: string | StringFilter;
-  mode?: "default" | "insensitive";
-} | string;
+type StringFilter =
+  | {
+      equals?: string;
+      in?: string[];
+      notIn?: string[];
+      contains?: string;
+      startsWith?: string;
+      endsWith?: string;
+      not?: string | StringFilter;
+      mode?: "default" | "insensitive";
+    }
+  | string;
 
 /**
  * 日付フィールド用の検索条件
  */
-type DateTimeFilter = {
-  equals?: Date;
-  in?: Date[];
-  notIn?: Date[];
-  lt?: Date;
-  lte?: Date;
-  gt?: Date;
-  gte?: Date;
-  not?: Date | DateTimeFilter;
-} | Date;
+type DateTimeFilter =
+  | {
+      equals?: Date;
+      in?: Date[];
+      notIn?: Date[];
+      lt?: Date;
+      lte?: Date;
+      gt?: Date;
+      gte?: Date;
+      not?: Date | DateTimeFilter;
+    }
+  | Date;
 
 /**
  * ユーザー検索条件の型定義
@@ -176,7 +180,7 @@ class User implements IUser {
       const result = await prisma.user.findFirst({
         where,
         // 必要なフィールドのみ取得してパフォーマンス向上
-        select
+        select,
       });
 
       if (!result) return null;
@@ -235,7 +239,7 @@ class User implements IUser {
   static async all(): Promise<User[]> {
     try {
       const users = await prisma.user.findMany({
-        select
+        select,
       });
 
       return users.map((user) => new User(user as BaseUser));
@@ -249,11 +253,17 @@ class User implements IUser {
    * @param where 検索条件
    * @returns 条件に一致するUserインスタンスの配列
    */
-  static async some(where: UserWhereInput): Promise<User[]> {
+  static async some(
+    where: UserWhereInput,
+    limit?: number,
+    page: number = 0,
+  ): Promise<User[]> {
     try {
       const users = await prisma.user.findMany({
         where,
         select,
+        take: limit,
+        skip: page * (limit || 10), // ページネーション
       });
 
       return users.map((user) => new User(user as BaseUser));
@@ -352,8 +362,8 @@ class User implements IUser {
 
       // セッション数制限（5個まで）
       if (sessions.length >= 5) {
-        const oldestSession = sessions.sort((a, b) =>
-          a.expires_at.getTime() - b.expires_at.getTime()
+        const oldestSession = sessions.sort(
+          (a, b) => a.expires_at.getTime() - b.expires_at.getTime(),
         )[0];
 
         await prisma.session.delete({

@@ -14,17 +14,14 @@ export default function ProfileLayout({
         <div className="w-full">
           <div className="mt-2 ml-2 flex items-center">
             <SidebarTrigger />
-            <p className="text-sm text-gray-500 dark:text-gray-400">{">>"} BitTryer Dashboard</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {">>"} BitTryer Dashboard
+            </p>
           </div>
 
-
-          <div className="p-5">
-            {children}
-          </div>
+          <div className="p-5">{children}</div>
         </div>
       </SidebarProvider>
-
-
     </div>
   );
 }

@@ -257,7 +257,7 @@ export type CreateCoin = Omit<
   | "is_tradeable"
   | "is_mineable"
   | "trading_fee"
-  | "createdAt" 
+  | "createdAt"
   | "updatedAt"
 >;
 export type CreatePortfolio = Omit<
@@ -270,7 +270,9 @@ export type CreateTradeHistory = Omit<
 >;
 
 // Update types (更新可能フィールドのみ)
-export type UpdateUser = Partial<Pick<BaseUser, "name" | "description" | "base_coin">>;
+export type UpdateUser = Partial<
+  Pick<BaseUser, "name" | "description" | "base_coin">
+>;
 export type UpdateCoin = Partial<
   Pick<
     BaseCoin,
