@@ -14,9 +14,16 @@ export async function getBaseUrl(): Promise<string> {
     return `https://${process.env.VERCEL_URL}`;
   }
 
+  const headersList = await headers();
+
+  const referer = headersList.get("referer");
+  if (referer) {
+    const uri = new URL(referer);
+    return `${uri.protocol}//${uri.host}`;
+  }
+
   // 3. リクエストヘッダーから取得
   try {
-    const headersList = await headers();
     const host = headersList.get("host");
 
     if (host) {
