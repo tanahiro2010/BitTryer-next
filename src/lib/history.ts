@@ -197,6 +197,7 @@ class History {
                 >;
                 direction: "asc" | "desc";
             };
+            select?: Record<string, boolean>;
         },
     ): Promise<History[]> {
         const { limit, page = 0, orderBy } = options || {};
