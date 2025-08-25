@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateToken } from "@/utils/token";
 import BitCoin from "@/lib/coin";
+import User from "@/lib/user";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -30,4 +32,25 @@ export async function GET(req: NextRequest) {
             data: null,
         });
     }
+}
+
+export async function POST(req: NextRequest) {
+    const [body, user] = await Promise.all([req.json(), User.current()]);
+    if (!user) return NextResponse.json({ error: true, message: "Not authenticated", data: null }, { status: 401 });
+    const { name, symbol, description, current_price } = body;
+    if (!name || !symbol || !current_price) {
+        return NextResponse.json({ error: true, message: "Missing required fields", data: null }, { status: 400 });
+    }
+
+    const coinId = await generateToken();
+
+    const coin = await BitCoin.new({
+        coin_id: coinId,
+        name,
+        symbol,
+        initial_price: current_price,
+        current_price,
+        description,
+        creator_id: user.userId
+    });
 }
