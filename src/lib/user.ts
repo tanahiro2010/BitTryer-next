@@ -59,7 +59,17 @@ interface IUserStatic {
   all(): Promise<User[]>;
 
   /** 条件検索でユーザー取得 */
-  some(where: Record<keyof BaseUser, any>): Promise<User[]>;
+  some(where: UserWhereInput, options?: {
+    limit?: number;
+    page?: number;
+    orderBy?: {
+      field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
+      direction: 'asc' | 'desc';
+    };
+  }): Promise<User[]>;
+
+  /** 検索条件に一致するユーザー数を取得 */
+  count(where: UserWhereInput): Promise<number>;
 }
 
 /**
@@ -109,6 +119,7 @@ type UserWhereInput = Partial<{
 }>;
 
 const select = {
+  id: true,
   client_id: true,
   email: true,
   description: true,
@@ -117,7 +128,7 @@ const select = {
   name: true,
   createdAt: true,
   updatedAt: true,
-};
+} as const;
 
 class User implements IUser {
   public readonly userId: string;
@@ -249,26 +260,64 @@ class User implements IUser {
   }
 
   /**
-   * 条件検索でユーザー取得
+   * 条件検索でユーザー取得（ページネーション対応）
    * @param where 検索条件
+   * @param options 検索オプション
    * @returns 条件に一致するUserインスタンスの配列
    */
   static async some(
     where: UserWhereInput,
-    limit?: number,
-    page: number = 0,
+    options?: {
+      limit?: number;
+      page?: number;
+      orderBy?: {
+        field: keyof Pick<BaseUser, 'createdAt' | 'updatedAt' | 'name'>;
+        direction: 'asc' | 'desc';
+      };
+    }
   ): Promise<User[]> {
+    const { limit, page = 0, orderBy } = options || {};
+    const take = limit || 10;
+    const skip = page * take;
+
     try {
+      // 空の検索条件をチェック
+      if (!where || Object.keys(where).length === 0) {
+        throw new Error("Search conditions are required");
+      }
+
+      const orderByClause = orderBy 
+        ? { [orderBy.field]: orderBy.direction }
+        : { createdAt: 'desc' as const };
+
       const users = await prisma.user.findMany({
         where,
         select,
-        take: limit,
-        skip: page * (limit || 10), // ページネーション
+        take,
+        skip,
+        orderBy: orderByClause,
       });
 
       return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to search users: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * 検索条件に一致するユーザー数を取得
+   * @param where 検索条件
+   * @returns 一致するユーザーの総数
+   */
+  static async count(where: UserWhereInput): Promise<number> {
+    try {
+      if (!where || Object.keys(where).length === 0) {
+        return await prisma.user.count();
+      }
+
+      return await prisma.user.count({ where });
+    } catch (error) {
+      throw new Error(`Failed to count users: ${(error as Error).message}`);
     }
   }
 
