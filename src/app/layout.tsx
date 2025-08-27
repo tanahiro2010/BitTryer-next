@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/dist/next";
 import { Toaster } from "@/components/ui/sonner";
+import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import Header from "@/components/layout/header";
 import User from "@/lib/user";
@@ -155,6 +156,7 @@ export default async function RootLayout({
         <main>{children}</main>
 
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
