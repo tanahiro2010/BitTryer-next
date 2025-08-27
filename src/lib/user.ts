@@ -539,6 +539,7 @@ class User implements IUser {
 
     // 購入処理
     const result = await bitcoin.buy(this.userId, amount, pricePerCoin);
+    if (!result) throw new Error("Failed to complete purchase");
 
     // ユーザーの残高を更新
     const newBalance = new Decimal(this.user.base_coin).minus(totalCost);
@@ -563,6 +564,7 @@ class User implements IUser {
 
     // 売却処理
     const result = await bitcoin.sell(this.userId, amount, pricePerCoin);
+    if (!result) throw new Error("Failed to complete sale");
 
     // ユーザーの残高を更新（売却益を追加）
     const currentPrice = pricePerCoin || Number(bitcoin.coin.current_price);

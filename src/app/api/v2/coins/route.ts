@@ -53,4 +53,7 @@ export async function POST(req: NextRequest) {
         description,
         creator_id: user.userId
     });
+    if (!coin) return NextResponse.json({ error: true, message: "Failed to create coin", data: null }, { status: 500 });
+
+    return NextResponse.json({ error: false, message: "Coin created successfully", data: { coin } });
 }
