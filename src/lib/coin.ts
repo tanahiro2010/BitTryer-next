@@ -1,6 +1,6 @@
-import { prisma } from "@/data/prisma";
 import { BaseCoin, CreateCoin, TradeType } from "@/types/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import { prisma } from "@/data/prisma";
 import History from "./history";
 
 /**
@@ -125,10 +125,9 @@ class BitCoin {
   /**
    * 新規コイン作成
    * @param payload コイン作成データ
-   * @returns 作成されたBitCoinインスタンス
-   * @throws DB操作でエラーが発生した場合
+   * @returns 作成されたBitCoinインスタンスまたはnull
    */
-  static async new(payload: CreateCoin): Promise<BitCoin> {
+  static async new(payload: CreateCoin): Promise<BitCoin | null> {
     try {
       const createdCoin = await prisma.coin.create({
         data: payload,
@@ -136,7 +135,8 @@ class BitCoin {
 
       return new BitCoin(createdCoin);
     } catch (error) {
-      throw new Error(`Failed to create coin: ${(error as Error).message}`);
+      console.error(`Failed to create coin: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -157,7 +157,8 @@ class BitCoin {
       if (!coin) return null;
       return new BitCoin(coin as BaseCoin);
     } catch (error) {
-      throw new Error(`Failed to get coin: ${(error as Error).message}`);
+      console.error(`Failed to get coin: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -165,7 +166,7 @@ class BitCoin {
 
   /**
    * 全コイン取得
-   * @returns 全BitCoinインスタンスの配列
+   * @returns 全BitCoinインスタンスの配列（エラー時は空配列）
    */
   static async all(): Promise<BitCoin[]> {
     try {
@@ -176,7 +177,8 @@ class BitCoin {
 
       return coins.map((coin) => new BitCoin(coin as BaseCoin));
     } catch (error) {
-      throw new Error(`Failed to get all coins: ${(error as Error).message}`);
+      console.error(`Failed to get all coins: ${(error as Error).message}`);
+      return [];
     }
   }
 
@@ -206,7 +208,8 @@ class BitCoin {
 
     try {
       if (!where || Object.keys(where).length === 0) {
-        throw new Error("Search conditions are required");
+        console.error("Search conditions are required");
+        return [];
       }
 
       const orderByClause = orderBy
@@ -223,14 +226,15 @@ class BitCoin {
 
       return coins.map((coin) => new BitCoin(coin as BaseCoin));
     } catch (error) {
-      throw new Error(`Failed to search coins: ${(error as Error).message}`);
+      console.error(`Failed to search coins: ${(error as Error).message}`);
+      return [];
     }
   }
 
   /**
    * 取引可能なコイン一覧を取得
    * @param limit 取得件数制限
-   * @returns 取引可能なBitCoinインスタンスの配列
+   * @returns 取引可能なBitCoinインスタンスの配列（エラー時は空配列）
    */
   static async tradeable(limit?: number): Promise<BitCoin[]> {
     try {
@@ -246,9 +250,8 @@ class BitCoin {
 
       return coins.map((coin) => new BitCoin(coin as BaseCoin));
     } catch (error) {
-      throw new Error(
-        `Failed to get tradeable coins: ${(error as Error).message}`,
-      );
+      console.error(`Failed to get tradeable coins: ${(error as Error).message}`);
+      return [];
     }
   }
 
@@ -259,13 +262,13 @@ class BitCoin {
    * @param tradeType 取引タイプ ('buy' | 'sell')
    * @param tradeAmount 取引量
    * @param tradePrice 取引価格
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
   private async updatePriceByTrade(
     tradeType: "buy" | "sell",
     tradeAmount: number,
     tradePrice: number,
-  ): Promise<BitCoin> {
+  ): Promise<BitCoin | null> {
     try {
       const newPriceData = this.calculatePriceChange(
         tradeType,
@@ -281,9 +284,8 @@ class BitCoin {
 
       return new BitCoin(updatedCoin as BaseCoin);
     } catch (error) {
-      throw new Error(
-        `Failed to update coin price: ${(error as Error).message}`,
-      );
+      console.error(`Failed to update coin price: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -429,20 +431,22 @@ class BitCoin {
    * @param buyerId 購入者のユーザーID
    * @param amount 購入量
    * @param pricePerCoin 1コインあたりの購入価格
-   * @returns 更新されたBitCoinインスタンスと取引履歴
+   * @returns 更新されたBitCoinインスタンスと取引履歴、またはnull
    */
   async buy(
     buyerId: string,
     amount: number,
     pricePerCoin?: number,
-  ): Promise<{ coin: BitCoin; history: History }> {
+  ): Promise<{ coin: BitCoin; history: History } | null> {
     try {
       if (amount <= 0) {
-        throw new Error("Purchase amount must be positive");
+        console.error("Purchase amount must be positive");
+        return null;
       }
 
       if (!this.coin.is_tradeable || !this.coin.is_active) {
-        throw new Error("This coin is not tradeable");
+        console.error("This coin is not tradeable");
+        return null;
       }
 
       const currentPrice = Number(this.coin.current_price);
@@ -451,6 +455,10 @@ class BitCoin {
 
       // 取引履歴を記録
       const tradeHistory = await this.recordTradeHistory(buyerId, amount, actualPrice, "buy");
+      if (!tradeHistory) {
+        console.error("Failed to record trade history");
+        return null;
+      }
 
       // 価格を更新
       const updatedCoin = await this.updatePriceByTrade(
@@ -459,31 +467,39 @@ class BitCoin {
         actualPrice,
       );
 
+      if (!updatedCoin) {
+        console.error("Failed to update coin price");
+        return null;
+      }
+
       return { coin: updatedCoin, history: tradeHistory };
     } catch (error) {
-      throw new Error(`Failed to buy coin: ${(error as Error).message}`);
+      console.error(`Failed to buy coin: ${(error as Error).message}`);
+      return null;
     }
   }
 
-  /**
+    /**
    * コインを売却する
    * @param sellerId 売却者のユーザーID
    * @param amount 売却量
    * @param pricePerCoin 1コインあたりの売却価格
-   * @returns 更新されたBitCoinインスタンスと取引履歴
+   * @returns 更新されたBitCoinインスタンスと取引履歴、またはnull
    */
   async sell(
     sellerId: string,
     amount: number,
     pricePerCoin?: number,
-  ): Promise<{ coin: BitCoin; history: History }> {
+  ): Promise<{ coin: BitCoin; history: History } | null> {
     try {
       if (amount <= 0) {
-        throw new Error("Sell amount must be positive");
+        console.error("Sell amount must be positive");
+        return null;
       }
 
       if (!this.coin.is_tradeable || !this.coin.is_active) {
-        throw new Error("This coin is not tradeable");
+        console.error("This coin is not tradeable");
+        return null;
       }
 
       const currentPrice = Number(this.coin.current_price);
@@ -491,6 +507,10 @@ class BitCoin {
 
       // 取引履歴を記録
       const tradeHistory = await this.recordTradeHistory(sellerId, amount, actualPrice, "sell");
+      if (!tradeHistory) {
+        console.error("Failed to record trade history");
+        return null;
+      }
 
       // 価格を更新
       const updatedCoin = await this.updatePriceByTrade(
@@ -499,16 +519,22 @@ class BitCoin {
         actualPrice,
       );
 
+      if (!updatedCoin) {
+        console.error("Failed to update coin price");
+        return null;
+      }
+
       return { coin: updatedCoin, history: tradeHistory };
     } catch (error) {
-      throw new Error(`Failed to sell coin: ${(error as Error).message}`);
+      console.error(`Failed to sell coin: ${(error as Error).message}`);
+      return null;
     }
   }
 
   /**
    * コイン情報を更新する
    * @param updateData 更新するデータ
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
   async update(
     updateData: Partial<
@@ -527,7 +553,7 @@ class BitCoin {
         | "is_tradeable"
       >
     >,
-  ): Promise<BitCoin> {
+  ): Promise<BitCoin | null> {
     try {
       const updatedCoin = await prisma.coin.update({
         where: { coin_id: this.coinId },
@@ -540,55 +566,57 @@ class BitCoin {
 
       return new BitCoin(updatedCoin as BaseCoin);
     } catch (error) {
-      throw new Error(`Failed to update coin: ${(error as Error).message}`);
+      console.error(`Failed to update coin: ${(error as Error).message}`);
+      return null;
     }
   }
 
   /**
    * コインの取引を一時停止/再開する
    * @param tradeable 取引可能かどうか
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async setTradeable(tradeable: boolean): Promise<BitCoin> {
+  async setTradeable(tradeable: boolean): Promise<BitCoin | null> {
     return await this.update({ is_tradeable: tradeable });
   }
 
   /**
    * コインをアクティブ/非アクティブにする
    * @param active アクティブかどうか
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async setActive(active: boolean): Promise<BitCoin> {
+  async setActive(active: boolean): Promise<BitCoin | null> {
     return await this.update({ is_active: active });
   }
 
   /**
    * コインのランクを更新する
    * @param rank 新しいランク
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async updateRank(rank: number): Promise<BitCoin> {
+  async updateRank(rank: number): Promise<BitCoin | null> {
     return await this.update({ rank });
   }
 
   /**
    * コインの説明を更新する
    * @param description 新しい説明
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async updateDescription(description: string): Promise<BitCoin> {
+  async updateDescription(description: string): Promise<BitCoin | null> {
     return await this.update({ description });
   }
 
   /**
    * 手動で価格を設定する（管理者用）
    * @param newPrice 新しい価格
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async setPrice(newPrice: number): Promise<BitCoin> {
+  async setPrice(newPrice: number): Promise<BitCoin | null> {
     try {
       if (newPrice <= 0) {
-        throw new Error("Price must be positive");
+        console.error("Price must be positive");
+        return null;
       }
 
       const currentPrice = Number(this.coin.current_price);
@@ -612,15 +640,16 @@ class BitCoin {
         low_24h: new Decimal(newLow24h),
       });
     } catch (error) {
-      throw new Error(`Failed to set price: ${(error as Error).message}`);
+      console.error(`Failed to set price: ${(error as Error).message}`);
+      return null;
     }
   }
 
   /**
    * 24時間統計をリセットする（日次バッチ処理用）
-   * @returns 更新されたBitCoinインスタンス
+   * @returns 更新されたBitCoinインスタンスまたはnull
    */
-  async reset24hStats(): Promise<BitCoin> {
+  async reset24hStats(): Promise<BitCoin | null> {
     const currentPrice = Number(this.coin.current_price);
 
     return await this.update({
@@ -640,14 +669,14 @@ class BitCoin {
    * @param amount 取引量
    * @param price 取引価格
    * @param side 取引種別
-   * @returns 作成された取引履歴
+   * @returns 作成された取引履歴またはnull
    */
   private async recordTradeHistory(
     userId: string,
     amount: number,
     price: number,
     side: "buy" | "sell",
-  ): Promise<History> {
+  ): Promise<History | null> {
     try {
       const tradeType = side === "buy" ? TradeType.BUY : TradeType.SELL;
       
@@ -662,7 +691,7 @@ class BitCoin {
       return history;
     } catch (error) {
       console.error("Failed to record trade history:", error);
-      throw new Error(`Failed to record trade history: ${(error as Error).message}`);
+      return null;
     }
   }
 
