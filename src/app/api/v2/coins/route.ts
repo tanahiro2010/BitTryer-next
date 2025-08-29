@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateToken } from "@/utils/token";
+import { Decimal } from "@prisma/client/runtime/library";
 import BitCoin from "@/lib/coin";
 import User from "@/lib/user";
+
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -48,11 +50,11 @@ export async function POST(req: NextRequest) {
         coin_id: coinId,
         name,
         symbol,
-        initial_price: current_price,
-        current_price,
+        initial_price: Decimal(current_price),
+        current_price: Decimal(current_price),
         description,
         creator_id: user.userId
-    });
+    }, user);
     if (!coin) return NextResponse.json({ error: true, message: "Failed to create coin", data: null }, { status: 500 });
 
     return NextResponse.json({ error: false, message: "Coin created successfully", data: { coin } });

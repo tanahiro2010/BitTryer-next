@@ -2,6 +2,7 @@ import { BaseCoin, CreateCoin, TradeType } from "@/types/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "@/data/prisma";
 import History from "./history";
+import User from "./user";
 
 /**
  * 文字列フィールド用の検索条件
@@ -127,8 +128,14 @@ class BitCoin {
    * @param payload コイン作成データ
    * @returns 作成されたBitCoinインスタンスまたはnull
    */
-  static async new(payload: CreateCoin): Promise<BitCoin | null> {
+  static async new(payload: CreateCoin, user: User): Promise<BitCoin | null> {
     try {
+      const price = payload.current_price;
+      if (price > user.user.base_coin || price.toNumber() <= 0) {
+        return null;
+      }
+      await user.pullBaseCoin(-price);
+
       const createdCoin = await prisma.coin.create({
         data: payload,
       });
@@ -175,7 +182,7 @@ class BitCoin {
         orderBy: { rank: "asc" }, // ランク順でソート
       });
 
-      return coins.map((coin) => new BitCoin(coin as BaseCoin));
+      return coins.map((coin: BaseCoin) => new BitCoin(coin));
     } catch (error) {
       console.error(`Failed to get all coins: ${(error as Error).message}`);
       return [];
@@ -224,7 +231,7 @@ class BitCoin {
         orderBy: orderByClause,
       });
 
-      return coins.map((coin) => new BitCoin(coin as BaseCoin));
+      return coins.map((coin: BaseCoin) => new BitCoin(coin as BaseCoin));
     } catch (error) {
       console.error(`Failed to search coins: ${(error as Error).message}`);
       return [];
@@ -236,7 +243,7 @@ class BitCoin {
    * @param limit 取得件数制限
    * @returns 取引可能なBitCoinインスタンスの配列（エラー時は空配列）
    */
-  static async tradeable(limit?: number): Promise<BitCoin[]> {
+  static async tradeable(limit?: number, page: number = 1): Promise<BitCoin[]> {
     try {
       const coins = await prisma.coin.findMany({
         where: {
@@ -245,10 +252,11 @@ class BitCoin {
         },
         select,
         take: limit,
+        skip: (page - 1) * (limit || 20),
         orderBy: { rank: "asc" },
       });
 
-      return coins.map((coin) => new BitCoin(coin as BaseCoin));
+      return coins.map((coin: BaseCoin) => new BitCoin(coin));
     } catch (error) {
       console.error(`Failed to get tradeable coins: ${(error as Error).message}`);
       return [];
