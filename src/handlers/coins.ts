@@ -25,6 +25,8 @@ export async function handleCreateCoin(e: FormEvent<HTMLFormElement>) {
             body: JSON.stringify(coinData)
         });
 
+        
+
     } catch (error) {
         console.error("Error creating coin:", error);
         toast.error("コインの作成に失敗しました。自身の所持コインが足りているか確認してください。");
