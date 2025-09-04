@@ -42,9 +42,12 @@ export default async function CoinsPage({ searchParams }: PageProps) {
                 </div>
             )}
 
-            <Link href={`/profile/coins/new`} className="w-full">
-                <Button className="w-full">新規コイン作成</Button>
-            </Link>
+            <div className="mt-5">
+                <Link href={`/profile/coins/new`} className="w-full">
+                    <Button className="w-full">新規コイン作成</Button>
+                </Link>
+            </div>
+
         </div>
     );
 }
