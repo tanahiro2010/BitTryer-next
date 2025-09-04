@@ -61,7 +61,7 @@ model Coin {
 
   // === 作成者情報 ===
   creator_id String // 作成者のユーザーID
-  creator    User   @relation("CoinCreator", fields: [creator_id], references: [id])
+  creator    User   @relation("CoinCreator", fields: [creator_id], references: [client_id])
 
   // === 発行量・供給量 ===
   total_supply   Decimal @default(100000) // 最大発行量（10万枚）
