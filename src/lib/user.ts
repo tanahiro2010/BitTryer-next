@@ -509,7 +509,7 @@ class User implements IUser {
   async pullBaseCoin(coin: number): Promise<BaseUser> {
     try {
       const result = await prisma.user.update({
-        where: { id: this.userId },
+        where: { client_id: this.userId },
         data: {
           base_coin: {
             increment: coin,
