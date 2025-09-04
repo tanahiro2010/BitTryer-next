@@ -131,18 +131,46 @@ class BitCoin {
   static async new(payload: CreateCoin, user: User): Promise<BitCoin | null> {
     try {
       const price = payload.current_price;
-      if (price > user.user.base_coin || price.toNumber() <= 0) {
+      console.log(`Creating coin with price: ${price}, user balance: ${user.user.base_coin}`);
+      
+      if (price.toNumber() <= 0) {
+        console.error("Price must be positive");
         return null;
       }
-      await user.pullBaseCoin(-price);
+      
+      // ユーザーの残高をチェック
+      if (price.greaterThan(user.user.base_coin)) {
+        console.error(`Insufficient balance. Required: ${price}, Available: ${user.user.base_coin}`);
+        return null;
+      }
+      
+      // ベースコインを引き出し（負の値で引き出し）
+      await user.pullBaseCoin(-price.toNumber());
 
       const createdCoin = await prisma.coin.create({
-        data: payload,
+        data: {
+          ...payload,
+          total_supply: new Decimal(1000000), // デフォルト総供給量
+          current_supply: new Decimal(0),     // 初期供給量は0
+          high_24h: payload.current_price,    // 24時間高値は現在価格
+          low_24h: payload.current_price,     // 24時間安値は現在価格
+          volume_24h: new Decimal(0),         // 初期取引量は0
+          change_24h: new Decimal(0),         // 初期変動額は0
+          change_24h_percent: new Decimal(0), // 初期変動率は0%
+          market_cap: new Decimal(0),         // 初期時価総額は0
+          rank: null,                         // 初期ランクはnull
+          is_active: true,                    // デフォルトでアクティブ
+          is_tradeable: true,                 // デフォルトで取引可能
+          is_mineable: false,                 // デフォルトでマイニング不可
+          trading_fee: new Decimal(0.001),    // デフォルト取引手数料0.1%
+        },
       });
 
+      console.log("Coin created successfully:", createdCoin.coin_id);
       return new BitCoin(createdCoin);
     } catch (error) {
       console.error(`Failed to create coin: ${(error as Error).message}`);
+      console.error("Full error:", error);
       return null;
     }
   }
