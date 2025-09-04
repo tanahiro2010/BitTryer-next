@@ -12,7 +12,7 @@ export async function handleCreateCoin(e: FormEvent<HTMLFormElement>) {
     const coinData = {
         name: formData.get("name"),
         symbol: formData.get("symbol"),
-        price: formData.get("price"),
+        current_price: formData.get("price"),
         description: formData.get("description"),
     };
 
@@ -24,9 +24,13 @@ export async function handleCreateCoin(e: FormEvent<HTMLFormElement>) {
             },
             body: JSON.stringify(coinData)
         });
+        const data = await response.json();
+        if (!response.ok || data.error) {
+            throw new Error(data.message || "Unknown error");
+        }
 
-        
-
+        toast.success("コインが作成されました！");
+        toast.dismiss(LoadingID);
     } catch (error) {
         console.error("Error creating coin:", error);
         toast.error("コインの作成に失敗しました。自身の所持コインが足りているか確認してください。");
