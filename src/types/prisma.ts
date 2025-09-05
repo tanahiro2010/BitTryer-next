@@ -257,6 +257,7 @@ export type CreateCoin = Omit<
   | "trading_fee"
   | "createdAt"
   | "updatedAt"
+  | "creator_id"
 >;
 export type CreatePortfolio = Omit<
   BasePortfolio,

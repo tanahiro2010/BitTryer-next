@@ -163,6 +163,7 @@ class BitCoin {
           is_tradeable: true,                 // デフォルトで取引可能
           is_mineable: false,                 // デフォルトでマイニング不可
           trading_fee: new Decimal(0.001),    // デフォルト取引手数料0.1%
+          creator_id: user.userId             // これは client_id と同じ
         },
       });
 
@@ -237,15 +238,15 @@ class BitCoin {
       };
     },
   ): Promise<BitCoin[]> {
-    const { limit, page = 0, orderBy } = options || {};
+    const { limit, page = 1, orderBy } = options || {};
     const take = limit || 20;
-    const skip = page * take;
+    const skip = (page - 1) * take;
 
     try {
-      if (!where || Object.keys(where).length === 0) {
-        console.error("Search conditions are required");
-        return [];
-      }
+      // if (!where || Object.keys(where).length === 0) {
+      //   console.error("Search conditions are required");
+      //   return [];
+      // }
 
       const orderByClause = orderBy
         ? { [orderBy.field]: orderBy.direction }
@@ -287,6 +288,31 @@ class BitCoin {
       return coins.map((coin: BaseCoin) => new BitCoin(coin));
     } catch (error) {
       console.error(`Failed to get tradeable coins: ${(error as Error).message}`);
+      return [];
+    }
+  }
+
+  /**
+   * ユーザーが作成したコイン一覧を取得
+   * @param creatorId ユーザーID
+   * @param options 取得オプション（limit, page）
+   */
+  static async author(creatorId: string, options: { limit?: number; page?: number }): Promise<BitCoin[]> {
+    const { limit = 20, page = 1 } = options;
+
+    try {
+      const coins = await prisma.coin.findMany({
+        where: {
+          creator_id: creatorId,
+        },
+        select,
+        take: limit || 50,
+        skip: (page - 1) * (limit || 20),
+        orderBy: { createdAt: "desc" },
+      });
+      return coins.map((coin: BaseCoin) => new BitCoin(coin));
+    } catch (error) {
+      console.error(`Failed to get user's created coins: ${(error as Error).message}`);
       return [];
     }
   }

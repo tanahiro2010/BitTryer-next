@@ -7,7 +7,7 @@ import User from "@/lib/user";
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q") || "";
+    const query = searchParams.get("q");
     const limit = parseInt(searchParams.get("limit") ?? "10");
     const page = parseInt(searchParams.get("page") ?? "0");
     const where = {};
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const [body, user] = await Promise.all([req.json(), User.current()]);
+        const [body, user, coinId] = await Promise.all([req.json(), User.current(), generateToken()]);
         if (!user) return NextResponse.json({ error: true, message: "Not authenticated", data: null }, { status: 401 });
         
         console.log("Current user:", { userId: user.userId, userObj: user.user });
@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: true, message: "Missing required fields", data: null }, { status: 400 });
         }
 
-        const coinId = await generateToken();
         console.log("Generated coin ID:", coinId);
 
         const coinData = {
@@ -59,8 +58,7 @@ export async function POST(req: NextRequest) {
             symbol,
             initial_price: new Decimal(current_price),
             current_price: new Decimal(current_price),
-            description,
-            creator_id: user.userId  // これは client_id と同じ
+            description
         };
         console.log("Coin data to create:", coinData);
 
