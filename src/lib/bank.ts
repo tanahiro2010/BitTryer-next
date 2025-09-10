@@ -72,6 +72,18 @@ class Bank {
         }
     }
 
+
+    static async current(): Promise<Bank | null> {
+        try {
+            const user = await User.current();
+            if (!user) return null;
+            return new Bank(user);
+        } catch (error) {
+            console.error("Failed to create Bank instance for current user:", error);
+            return null;
+        }
+    }
+
     // ==================== 取得メソッド ====================
 
     /**
