@@ -7,6 +7,7 @@ import { prisma } from "@/data/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import BitCoin from "./coin";
 import History from "./history";
+import Bank from "./bank";
 
 /**
  * ユーザー情報と認証機能を提供するインターフェース
@@ -142,12 +143,14 @@ const select = {
 class User implements IUser {
   public readonly userId: string;
   public readonly user: Readonly<BaseUser>;
+  public readonly bank: Bank;
 
   // ==================== コンストラクタ ====================
 
-  private constructor(user: BaseUser) {
+  private constructor(user: BaseUser, bank: Bank) {
     this.userId = user.client_id;
     this.user = Object.freeze({ ...user }); // immutableにする
+    this.bank = bank;
   }
 
   // ==================== 静的メソッド（作成・取得） ====================
@@ -170,7 +173,10 @@ class User implements IUser {
         data: hashedPayload,
       });
 
-      return new User(createdUser);
+      const bank = await Bank.get(createdUser.client_id);
+      if (!bank) throw new Error("Failed to create bank for new user");
+
+      return new User(createdUser, bank);
     } catch (error) {
       throw new Error(`Failed to create user: ${(error as Error).message}`);
     }
