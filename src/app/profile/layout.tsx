@@ -15,7 +15,7 @@ export default function ProfileLayout({
           <div className="mt-2 ml-2 flex items-center">
             <SidebarTrigger />
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {">>"} BitTryer Dashboard
+              {">"} BitTryer Dashboard
             </p>
           </div>
 
