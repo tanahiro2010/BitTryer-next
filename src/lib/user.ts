@@ -147,10 +147,10 @@ class User implements IUser {
 
   // ==================== コンストラクタ ====================
 
-  private constructor(user: BaseUser, bank: Bank) {
+  private constructor(user: BaseUser, bank?: Bank) {
     this.userId = user.client_id;
     this.user = Object.freeze({ ...user }); // immutableにする
-    this.bank = bank;
+    this.bank = bank!; // bankは必須として扱う
   }
 
   // ==================== 静的メソッド（作成・取得） ====================
@@ -210,7 +210,15 @@ class User implements IUser {
       });
 
       if (!result) return null;
-      return new User(result as BaseUser);
+
+      // Bankインスタンスを取得
+      const bank = await Bank.get(result.client_id);
+      if (!bank) {
+        console.error(`Bank not found for user: ${result.client_id}`);
+        return null;
+      }
+
+      return new User(result as BaseUser, bank);
     } catch (error) {
       throw new Error(`Failed to get user: ${(error as Error).message}`);
     }
@@ -268,7 +276,16 @@ class User implements IUser {
         select,
       });
 
-      return users.map((user) => new User(user as BaseUser));
+      // 各ユーザーのBankインスタンスを並行取得
+      const usersWithBanks = await Promise.all(
+        users.map(async (user) => {
+          const bank = await Bank.get(user.client_id);
+          return bank ? new User(user as BaseUser, bank) : null;
+        })
+      );
+
+      // bankが取得できなかったユーザーを除外
+      return usersWithBanks.filter((user): user is User => user !== null);
     } catch (error) {
       throw new Error(`Failed to get all users: ${(error as Error).message}`);
     }
@@ -313,7 +330,16 @@ class User implements IUser {
         orderBy: orderByClause,
       });
 
-      return users.map((user) => new User(user as BaseUser));
+      // 各ユーザーのBankインスタンスを並行取得
+      const usersWithBanks = await Promise.all(
+        users.map(async (user) => {
+          const bank = await Bank.get(user.client_id);
+          return bank ? new User(user as BaseUser, bank) : null;
+        })
+      );
+
+      // bankが取得できなかったユーザーを除外
+      return usersWithBanks.filter((user): user is User => user !== null);
     } catch (error) {
       throw new Error(`Failed to search users: ${(error as Error).message}`);
     }
@@ -496,7 +522,8 @@ class User implements IUser {
         data: updateData,
       });
 
-      return new User(updatedUser);
+      // 現在のBankインスタンスを保持
+      return new User(updatedUser, this.bank);
     } catch (error) {
       throw new Error(`Failed to update user: ${(error as Error).message}`);
     }
