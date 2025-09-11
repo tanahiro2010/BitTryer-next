@@ -7,7 +7,6 @@ import { prisma } from "@/data/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import BitCoin from "./coin";
 import History from "./history";
-import Bank from "./bank";
 
 /**
  * ユーザー情報と認証機能を提供するインターフェース
@@ -143,14 +142,12 @@ const select = {
 class User implements IUser {
   public readonly userId: string;
   public readonly user: Readonly<BaseUser>;
-  public readonly bank: Bank;
 
   // ==================== コンストラクタ ====================
 
-  private constructor(user: BaseUser, bank?: Bank) {
+  private constructor(user: BaseUser) {
     this.userId = user.client_id;
     this.user = Object.freeze({ ...user }); // immutableにする
-    this.bank = bank!; // bankは必須として扱う
   }
 
   // ==================== 静的メソッド（作成・取得） ====================
@@ -173,10 +170,7 @@ class User implements IUser {
         data: hashedPayload,
       });
 
-      const bank = await Bank.get(createdUser.client_id);
-      if (!bank) throw new Error("Failed to create bank for new user");
-
-      return new User(createdUser, bank);
+      return new User(createdUser);
     } catch (error) {
       throw new Error(`Failed to create user: ${(error as Error).message}`);
     }
@@ -210,15 +204,7 @@ class User implements IUser {
       });
 
       if (!result) return null;
-
-      // Bankインスタンスを取得
-      const bank = await Bank.get(result.client_id);
-      if (!bank) {
-        console.error(`Bank not found for user: ${result.client_id}`);
-        return null;
-      }
-
-      return new User(result as BaseUser, bank);
+      return new User(result as BaseUser);
     } catch (error) {
       throw new Error(`Failed to get user: ${(error as Error).message}`);
     }
@@ -276,16 +262,7 @@ class User implements IUser {
         select,
       });
 
-      // 各ユーザーのBankインスタンスを並行取得
-      const usersWithBanks = await Promise.all(
-        users.map(async (user) => {
-          const bank = await Bank.get(user.client_id);
-          return bank ? new User(user as BaseUser, bank) : null;
-        })
-      );
-
-      // bankが取得できなかったユーザーを除外
-      return usersWithBanks.filter((user): user is User => user !== null);
+      return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to get all users: ${(error as Error).message}`);
     }
@@ -330,16 +307,7 @@ class User implements IUser {
         orderBy: orderByClause,
       });
 
-      // 各ユーザーのBankインスタンスを並行取得
-      const usersWithBanks = await Promise.all(
-        users.map(async (user) => {
-          const bank = await Bank.get(user.client_id);
-          return bank ? new User(user as BaseUser, bank) : null;
-        })
-      );
-
-      // bankが取得できなかったユーザーを除外
-      return usersWithBanks.filter((user): user is User => user !== null);
+      return users.map((user) => new User(user as BaseUser));
     } catch (error) {
       throw new Error(`Failed to search users: ${(error as Error).message}`);
     }
@@ -522,8 +490,7 @@ class User implements IUser {
         data: updateData,
       });
 
-      // 現在のBankインスタンスを保持
-      return new User(updatedUser, this.bank);
+      return new User(updatedUser);
     } catch (error) {
       throw new Error(`Failed to update user: ${(error as Error).message}`);
     }
