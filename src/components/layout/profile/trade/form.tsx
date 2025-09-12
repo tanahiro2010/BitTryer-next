@@ -18,6 +18,7 @@ interface TradeFormProps {
     currentPrice?: number;
     availableBalance?: number;
     holdings?: number;
+    tradingFeeRate?: number; // 取引手数料率を追加
 }
 
 export default function TradeForm({ 
@@ -26,15 +27,32 @@ export default function TradeForm({
     coinSymbol = "", 
     currentPrice = 0, 
     availableBalance = 0,
-    holdings = 0 
+    holdings = 0,
+    tradingFeeRate = 0.005 // デフォルト0.5%
 }: TradeFormProps) {
     const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
     const [amount, setAmount] = useState("");
     const [price, setPrice] = useState(currentPrice.toString());
     
-    const totalCost = Number(amount) * Number(price);
+    const subtotal = Number(amount) * Number(price);
     const isBuy = tradeType === "buy";
-    const canAfford = isBuy ? totalCost <= availableBalance : Number(amount) <= holdings;
+    
+    // 手数料計算
+    const calculateTradingFee = (subtotal: number, type: "buy" | "sell"): number => {
+        if (type === "sell") {
+            // 売却時は手数料を10倍(5%) + 最低手数料
+            const sellFee = subtotal * tradingFeeRate * 10; // 5%
+            const minimumSellFee = Math.max(subtotal * 0.05, 0.1);
+            return Math.max(sellFee, minimumSellFee);
+        } else {
+            // 購入時は通常の手数料
+            return subtotal * tradingFeeRate;
+        }
+    };
+    
+    const tradingFee = calculateTradingFee(subtotal, tradeType);
+    const totalCost = isBuy ? subtotal + tradingFee : subtotal - tradingFee;
+    const canAfford = isBuy ? (subtotal + tradingFee) <= availableBalance : Number(amount) <= holdings;
 
     return (
         <Card className="w-full max-w-md mx-auto">
@@ -123,7 +141,7 @@ export default function TradeForm({
                                     <span>Max Purchasable:</span>
                                     <span className="font-mono">
                                         {currentPrice > 0 
-                                            ? `${(availableBalance / currentPrice).toLocaleString(undefined, {
+                                            ? `${(availableBalance / (currentPrice * (1 + tradingFeeRate))).toLocaleString(undefined, {
                                                 maximumFractionDigits: 8
                                             })} ${coinSymbol.toUpperCase()}`
                                             : "Set price first"
@@ -133,6 +151,10 @@ export default function TradeForm({
                                 <div className="flex justify-between text-sm">
                                     <span>Using Balance:</span>
                                     <span className="font-mono">¥{availableBalance.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-orange-600">
+                                    <span>Trading Fee Rate:</span>
+                                    <span className="font-mono">{(tradingFeeRate * 100).toFixed(1)}%</span>
                                 </div>
                             </div>
                         ) : (
@@ -147,6 +169,10 @@ export default function TradeForm({
                                         <span className="font-mono">¥{(holdings * currentPrice).toLocaleString()}</span>
                                     </div>
                                 )}
+                                <div className="flex justify-between text-sm text-red-600">
+                                    <span>Sell Fee Rate:</span>
+                                    <span className="font-mono">{(tradingFeeRate * 10 * 100).toFixed(1)}% (min 5%)</span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -167,7 +193,7 @@ export default function TradeForm({
                             <Input
                                 id="amount"
                                 name="amount"
-                                type="number"
+                                type="text"
                                 step="0.00000001"
                                 min="0"
                                 value={amount}
@@ -202,7 +228,7 @@ export default function TradeForm({
                             <Input
                                 id="price"
                                 name="price"
-                                type="number"
+                                type="text"
                                 step="0.01"
                                 min="0"
                                 value={price}
@@ -234,10 +260,22 @@ export default function TradeForm({
                                     <span className="text-gray-600">Price:</span>
                                     <span className="font-mono">¥{Number(price).toLocaleString()}</span>
                                 </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal:</span>
+                                    <span className="font-mono">¥{subtotal.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-orange-600">
+                                    <span className="text-gray-600">
+                                        Trading Fee ({isBuy ? `${(tradingFeeRate * 100).toFixed(1)}%` : `${(tradingFeeRate * 10 * 100).toFixed(1)}%+`}):
+                                    </span>
+                                    <span className="font-mono">
+                                        {isBuy ? "+" : "-"}¥{tradingFee.toLocaleString(undefined, {maximumFractionDigits: 2})}
+                                    </span>
+                                </div>
                                 <Separator />
                                 <div className="flex justify-between font-semibold">
                                     <span>Total {isBuy ? "Cost" : "Proceeds"}:</span>
-                                    <span className="font-mono">¥{totalCost.toLocaleString()}</span>
+                                    <span className="font-mono">¥{totalCost.toLocaleString(undefined, {maximumFractionDigits: 2})}</span>
                                 </div>
                             </div>
 
@@ -247,7 +285,7 @@ export default function TradeForm({
                                     <AlertCircle className="h-4 w-4" />
                                     <span>
                                         {isBuy 
-                                            ? `Insufficient balance (Available: ¥${availableBalance.toLocaleString()})` 
+                                            ? `Insufficient balance (Need: ¥${(subtotal + tradingFee).toLocaleString()}, Available: ¥${availableBalance.toLocaleString()})` 
                                             : `Insufficient holdings (Available: ${holdings.toLocaleString()} ${coinSymbol.toUpperCase()})`
                                         }
                                     </span>
@@ -294,7 +332,7 @@ export default function TradeForm({
 
 
                     <input type="hidden" name="coin_id" value={coinId} />
-                    <input type="hidden" name="trade_type" value={tradeType} />
+                    <input type="hidden" name="type" value={tradeType} />
                 </form>
             </CardContent>
         </Card>

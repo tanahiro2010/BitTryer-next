@@ -93,6 +93,7 @@ class Bank {
      */
     async coins(options: Omit<Query, "where"> = {}): Promise<BasePortfolio[] | null> {
         try {
+            console.log(`[Bank.coins] Fetching portfolios for user: ${this.userId} with options:`, options);
             const result = await prisma.portfolio.findMany({
                 where: {
                     user_id: this.userId,
@@ -129,7 +130,7 @@ class Bank {
     /**
      * 特定のコインの保有量を取得
      * @param coinId コインID
-     * @returns 保有量またはnull
+     * @returns 保有量またはnull（エラー時のみ）
      */
     async getCoinAmount(coinId: string): Promise<number | null> {
         try {
@@ -142,6 +143,7 @@ class Bank {
             });
 
             const totalAmount = portfolios.reduce((sum, p) => sum + Number(p.amount), 0);
+            console.log(`[Bank.getCoinAmount] User: ${this.userId}, Coin: ${coinId}, Total: ${totalAmount}, Entries: ${portfolios.length}`);
             return totalAmount;
         } catch (error) {
             console.error(`Failed to get coin amount for ${coinId}:`, error);
@@ -281,12 +283,71 @@ class Bank {
     }
 
     /**
-     * ポートフォリオのコイン量を更新
+     * ポートフォリオのコイン量を増分更新（取引用）
+     * @param coinId コインID
+     * @param deltaAmount 増減量（正の値で購入、負の値で売却）
+     * @returns 成功時true、失敗時null
+     */
+    async update(coinId: string, deltaAmount: number): Promise<boolean | null> {
+        try {
+            console.log(`[Bank.update] User: ${this.userId}, Coin: ${coinId}, Delta: ${deltaAmount}`);
+            
+            const currentAmount = await this.getCoinAmount(coinId);
+            console.log(`[Bank.update] Current amount: ${currentAmount}`);
+            
+            if (currentAmount === null) {
+                // エラーが発生した場合
+                console.error("Failed to get current coin amount");
+                return null;
+            }
+            
+            if (currentAmount === 0) {
+                // 新規コインまたは保有量0の場合
+                if (deltaAmount <= 0) {
+                    console.error("Cannot sell coins you don't own");
+                    return null;
+                }
+                console.log(`[Bank.update] Adding new coin with amount: ${deltaAmount}`);
+                const result = await this.add(coinId, deltaAmount);
+                console.log(`[Bank.update] Add result:`, result);
+                return result !== null;
+            } else {
+                // 既存コインの場合
+                const newAmount = currentAmount + deltaAmount;
+                console.log(`[Bank.update] New amount will be: ${newAmount}`);
+                
+                if (newAmount < 0) {
+                    console.error(`Insufficient holdings. Current: ${currentAmount}, Delta: ${deltaAmount}`);
+                    return null;
+                }
+                
+                if (newAmount === 0) {
+                    // 0になる場合は削除
+                    console.log(`[Bank.update] Removing coin (amount became 0)`);
+                    const result = await this.remove(coinId);
+                    console.log(`[Bank.update] Remove result:`, result);
+                    return result !== null;
+                } else {
+                    // 更新
+                    console.log(`[Bank.update] Setting amount to: ${newAmount}`);
+                    const result = await this.setAmount(coinId, newAmount);
+                    console.log(`[Bank.update] SetAmount result:`, result);
+                    return result !== null;
+                }
+            }
+        } catch (error) {
+            console.error(`Failed to update ${coinId} by ${deltaAmount}:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * ポートフォリオのコイン量を絶対値で設定
      * @param coinId コインID
      * @param newAmount 新しい量
      * @returns 更新されたエントリ数またはnull
      */
-    async update(coinId: string, newAmount: number): Promise<number | null> {
+    async setAmount(coinId: string, newAmount: number): Promise<number | null> {
         try {
             if (newAmount < 0) {
                 console.error("Amount cannot be negative");
@@ -310,7 +371,7 @@ class Bank {
 
             return result.count;
         } catch (error) {
-            console.error(`Failed to update ${coinId} amount to ${newAmount}:`, error);
+            console.error(`Failed to set ${coinId} amount to ${newAmount}:`, error);
             return null;
         }
     }

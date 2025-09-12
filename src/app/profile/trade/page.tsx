@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Coins, Wallet, ArrowUpDown, Plus, Minus } from "lucide-react";
 import BitCoin from "@/lib/coin";
 import Bank from "@/lib/bank";
@@ -120,7 +119,7 @@ export default async function TradeListPage() {
                             const isPositive = change24h >= 0;
 
                             return (
-                                <Link key={coin.coinId} href={`/trade/${coin.coinId}`}>
+                                <Link key={coin.coinId} href={`/profile/trade/${coin.coinId}`}>
                                     <div key={coin.coinId} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
                                         <div className="flex items-center justify-between">
                                             {/* コイン情報 */}
