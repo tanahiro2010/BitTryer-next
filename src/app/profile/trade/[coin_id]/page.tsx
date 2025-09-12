@@ -27,6 +27,7 @@ export default async function TradePage({ params }: TradePageProps) {
                 currentPrice={bitcoin.coin.current_price.toNumber()} 
                 availableBalance={user.user.base_coin.toNumber()} 
                 holdings={holdings || 0} 
+                tradingFeeRate={bitcoin.coin.trading_fee.toNumber()}
             />
         </div>
     )

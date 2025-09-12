@@ -2,13 +2,19 @@
 import { FormEvent } from "react";
 import { toast } from "sonner";
 
+const LOADING_TOAST_ID = "trade-loading";
+
 export async function handleTrade(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    toast.loading("取引を処理中...", { id: LOADING_TOAST_ID });
+
     const formData = new FormData(e.currentTarget);
     const payload = Object.fromEntries(formData.entries());
+    const coinId = payload.coin_id as string;
+    delete payload.coin_id;
 
     try {
-        const response = await fetch(`/api/v2/coins/${payload.coin_id}`, {
+        const response = await fetch(`/api/v2/coins/${coinId}/trade`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -26,6 +32,7 @@ export async function handleTrade(e: FormEvent<HTMLFormElement>) {
     } catch (e) {
         console.error("Trade error:", e);
         toast.error("取引中にエラーが発生しました。");
-        return;
     }
+
+    toast.dismiss(LOADING_TOAST_ID);
 }

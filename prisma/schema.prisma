@@ -29,8 +29,10 @@ model User {
   updatedAt DateTime @updatedAt // 最終更新日時
 
   // リレーション
-  createdCoins Coin[]    @relation("CoinCreator") // 作成したコイン一覧
-  sessions     Session[] // ログインセッション一覧
+  createdCoins    Coin[]          @relation("CoinCreator") // 作成したコイン一覧
+  sessions        Session[]       // ログインセッション一覧
+  portfolios      Portfolio[]     // ポートフォリオ一覧
+  tradeHistories  TradeHistory[]  // 取引履歴一覧
 
   @@map("users")
 }
@@ -61,7 +63,7 @@ model Coin {
 
   // === 作成者情報 ===
   creator_id String // 作成者のユーザーID
-  creator    User   @relation("CoinCreator", fields: [creator_id], references: [client_id])
+  creator    User   @relation("CoinCreator", fields: [creator_id], references: [client_id], onDelete: Cascade)
 
   // === 発行量・供給量 ===
   total_supply   Decimal @default(100000) // 最大発行量（10万枚）
@@ -94,6 +96,10 @@ model Coin {
   createdAt DateTime @default(now()) // コイン作成日時
   updatedAt DateTime @updatedAt // 最終更新日時
 
+  // === リレーション ===
+  portfolios     Portfolio[]     // このコインを保有するポートフォリオ一覧
+  tradeHistories TradeHistory[]  // このコインの取引履歴一覧
+
   @@map("coins")
 }
 
@@ -101,30 +107,39 @@ model Coin {
 model Portfolio {
   id      String @id @default(cuid()) // ポートフォリオID（主キー）
   user_id String
+  user    User   @relation(fields: [user_id], references: [client_id], onDelete: Cascade)
 
   coin_id String
+  coin    Coin   @relation(fields: [coin_id], references: [coin_id], onDelete: Cascade)
   amount  Decimal @default(0)
 
   createdAt DateTime @default(now()) // 作成日時
   updatedAt DateTime @updatedAt // 最終更新日時
 
+  @@unique([user_id, coin_id]) // 同じユーザー・コインの組み合わせは一意
   @@map("portfolios")
 }
 
 model TradeHistory {
   id         String @id @default(cuid()) // 取引履歴ID（主キー）
   history_id String @unique @default(cuid()) // 取引履歴ID（外部公開用）
+  
   user_id    String
+  user       User   @relation(fields: [user_id], references: [client_id], onDelete: Cascade)
 
-  coin_id   String
-  amount    Decimal     @default(0)
-  price     Decimal     @default(0)
-  side      TradeType // 取引種別（buy/sell/send/catch）
-  author_id String? // 取引を行ったユーザーID（任意、送金時など）
-  status    TradeStatus @default(loading) // 取引ステータス（loading/completed/failed）
+  coin_id    String
+  coin       Coin   @relation(fields: [coin_id], references: [coin_id], onDelete: Cascade)
+  
+  amount     Decimal     @default(0)
+  price      Decimal     @default(0)
+  side       TradeType // 取引種別（buy/sell/send/catch）
+  author_id  String? // 取引を行ったユーザーID（任意、送金時など）
+  status     TradeStatus @default(loading) // 取引ステータス（loading/completed/failed）
 
   createdAt DateTime @default(now()) // 作成日時
   updatedAt DateTime @updatedAt // 最終更新日時
+
+  @@map("trade_histories")
 }
 
 // enum

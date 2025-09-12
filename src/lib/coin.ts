@@ -3,6 +3,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { prisma } from "@/data/prisma";
 import History from "./history";
 import User from "./user";
+import Bank from "./bank";
 
 /**
  * 文字列フィールド用の検索条件
@@ -114,6 +115,13 @@ class BitCoin {
   public readonly coinId: string;
   public readonly coin: Readonly<BaseCoin>;
 
+  // ==================== 取引手数料設定の定数 ====================
+  static readonly TRADING_FEE_CONFIG = {
+    SELL_FEE_MULTIPLIER: 10,        // 売却手数料倍率 (基本手数料の10倍)
+    MINIMUM_SELL_FEE_RATE: 0.05,    // 最低売却手数料率 (5%)
+    MINIMUM_SELL_FEE_AMOUNT: 0.1,   // 最低売却手数料額 (0.1コイン)
+  } as const;
+
   // ==================== コンストラクタ ====================
 
   private constructor(coin: BaseCoin) {
@@ -151,7 +159,7 @@ class BitCoin {
         data: {
           ...payload,
           total_supply: new Decimal(1000000), // デフォルト総供給量
-          current_supply: new Decimal(0),     // 初期供給量は0
+          current_supply: new Decimal(1000),  // 初期流通量1000（価格変動計算に使用）
           high_24h: payload.current_price,    // 24時間高値は現在価格
           low_24h: payload.current_price,     // 24時間安値は現在価格
           volume_24h: new Decimal(0),         // 初期取引量は0
@@ -162,7 +170,7 @@ class BitCoin {
           is_active: true,                    // デフォルトでアクティブ
           is_tradeable: true,                 // デフォルトで取引可能
           is_mineable: false,                 // デフォルトでマイニング不可
-          trading_fee: new Decimal(0.001),    // デフォルト取引手数料0.1%
+          trading_fee: new Decimal(0.005),    // デフォルト取引手数料0.5%
           creator_id: user.userId             // これは client_id と同じ
         },
       });
@@ -364,45 +372,66 @@ class BitCoin {
     tradePrice: number,
   ): Record<string, any> {
     const currentPrice = Number(this.coin.current_price);
-    const currentSupply = Number(this.coin.current_supply);
+    const currentSupply = Math.max(Number(this.coin.current_supply), 1); // 最小値1に設定
     const totalSupply = Number(this.coin.total_supply);
-    const marketCap = Number(this.coin.market_cap);
+    const volume24h = Number(this.coin.volume_24h);
 
-    // 取引量が総供給量に占める割合（影響度）
-    const impactRatio = tradeAmount / currentSupply;
+    // 取引量ベースの影響度計算（より積極的な変動）
+    const baseImpact = Math.log(tradeAmount + 1) * 2; // 対数スケールで基本影響度
+    const volumeImpact = tradeAmount / Math.max(volume24h / 24, 1); // 日平均取引量に対する比率
+    
+    // 取引量に応じた基本変動率（0.1%～2%の範囲に縮小）
+    let baseVolatility: number;
+    if (tradeAmount >= 20) {
+      baseVolatility = Math.min(1.5 + (tradeAmount - 20) * 0.025, 2); // 大量取引: 1.5-2%
+    } else if (tradeAmount >= 10) {
+      baseVolatility = 0.8 + (tradeAmount - 10) * 0.07; // 中量取引: 0.8-1.5%
+    } else if (tradeAmount >= 5) {
+      baseVolatility = 0.4 + (tradeAmount - 5) * 0.08; // 小量取引: 0.4-0.8%
+    } else {
+      baseVolatility = 0.1 + tradeAmount * 0.06; // 極小取引: 0.1-0.4%
+    }
 
-    // 基本変動率（0.1% ~ 5%の範囲）
-    const baseVolatility = Math.min(Math.max(impactRatio * 100, 0.1), 5.0);
+    // 市場状況による補正（変動をさらに抑制）
+    const liquidityFactor = Math.min(totalSupply / 300000, 1.2); // 流動性係数をさらに低下
+    const scarcityFactor = Math.max(1 - (currentSupply / totalSupply), 0.5); // 希少性の影響をさらに制限
+    
+    // 最終的な変動率を計算（基本の40-50%に抑制）
+    let finalVolatility = baseVolatility * scarcityFactor * liquidityFactor * 0.45;
+    
+    // ランダム要素追加（±15%のバリエーションに縮小）
+    const randomFactor = 0.85 + (Math.random() * 0.3);
+    finalVolatility *= randomFactor;
 
     // 価格変動率の計算
     let priceChangePercent: number;
 
     if (tradeType === "buy") {
-      // 購入: 需要増加で価格上昇
-      priceChangePercent = this.calculateBuyImpact(
-        baseVolatility,
-        currentSupply,
-        totalSupply,
-      );
+      // 購入: 需要増加で価格上昇（倍率を縮小）
+      priceChangePercent = finalVolatility * 1.8; // 購入時は1.8倍の上昇（2.5倍から減少）
+      console.log(`[Buy Impact] Amount: ${tradeAmount}, Base: ${baseVolatility.toFixed(3)}%, Final: ${priceChangePercent.toFixed(3)}%`);
     } else {
-      // 売却: 供給増加で価格下落
-      priceChangePercent = this.calculateSellImpact(
-        baseVolatility,
-        currentSupply,
-        totalSupply,
-      );
+      // 売却: 供給増加で価格下落（影響をさらに抑制）
+      priceChangePercent = -finalVolatility * 0.3; // 売却時はさらに小さい影響（0.4倍から減少）
+      console.log(`[Sell Impact] Amount: ${tradeAmount}, Base: ${baseVolatility.toFixed(3)}%, Final: ${priceChangePercent.toFixed(3)}%`);
     }
 
     // 新しい価格を計算
     const priceChange = currentPrice * (priceChangePercent / 100);
     const newPrice = Math.max(currentPrice + priceChange, 0.01); // 最低価格を0.01に設定
 
+    console.log(`[Price Change] ${currentPrice} → ${newPrice} (${priceChangePercent.toFixed(2)}%)`);
+
+    // 供給量を動的に更新（取引により市場に流通するコインが増減）
+    const supplyChange = tradeType === "buy" ? tradeAmount * 0.1 : -tradeAmount * 0.05;
+    const newSupply = Math.max(currentSupply + supplyChange, 100); // 最小供給量100
+
     // 24時間の変動データを更新
     const change24h = newPrice - currentPrice;
     const changePercent24h = (change24h / currentPrice) * 100;
 
-    // 新しい時価総額を計算
-    const newMarketCap = newPrice * currentSupply;
+    // 新しい時価総額を計算（新しい供給量を使用）
+    const newMarketCap = newPrice * newSupply;
 
     // 24時間の高値・安値を更新
     const currentHigh24h = Number(this.coin.high_24h);
@@ -412,6 +441,7 @@ class BitCoin {
 
     return {
       current_price: new Decimal(newPrice),
+      current_supply: new Decimal(newSupply), // 供給量も更新
       change_24h: new Decimal(change24h),
       change_24h_percent: new Decimal(changePercent24h),
       market_cap: new Decimal(newMarketCap),
@@ -424,69 +454,138 @@ class BitCoin {
     };
   }
 
-  /**
-   * 購入による価格上昇影響を計算
-   * @param baseVolatility 基本変動率
-   * @param currentSupply 現在の供給量
-   * @param totalSupply 総供給量
-   * @returns 価格変動率（正の値）
-   */
-  private calculateBuyImpact(
-    baseVolatility: number,
-    currentSupply: number,
-    totalSupply: number,
-  ): number {
-    // 供給量が少ないほど価格上昇が大きい
-    const scarcityMultiplier = 1 +
-      ((totalSupply - currentSupply) / totalSupply) * 0.5;
-
-    // ランダム要素を追加（±20%のバリエーション）
-    const randomFactor = 0.8 + (Math.random() * 0.4);
-
-    return baseVolatility * scarcityMultiplier * randomFactor;
-  }
-
-  /**
-   * 売却による価格下落影響を計算
-   * @param baseVolatility 基本変動率
-   * @param currentSupply 現在の供給量
-   * @param totalSupply 総供給量
-   * @returns 価格変動率（負の値）
-   */
-  private calculateSellImpact(
-    baseVolatility: number,
-    currentSupply: number,
-    totalSupply: number,
-  ): number {
-    // 供給量が多いほど価格下落が大きい
-    const oversupplyMultiplier = 1 + (currentSupply / totalSupply) * 0.3;
-
-    // ランダム要素を追加（±20%のバリエーション）
-    const randomFactor = 0.8 + (Math.random() * 0.4);
-
-    return -baseVolatility * oversupplyMultiplier * randomFactor;
-  }
-
-  /**
-   * 大量取引による価格衝撃を計算
-   * @param tradeAmount 取引量
-   * @param averageVolume 平均取引量
-   * @returns 衝撃係数（1.0以上）
-   */
-  private calculateMarketImpact(
-    tradeAmount: number,
-    averageVolume: number,
-  ): number {
-    const volumeRatio = tradeAmount / Math.max(averageVolume, 1);
-
-    if (volumeRatio > 10) return 3.0; // 大量取引: 3倍の影響
-    if (volumeRatio > 5) return 2.0; // 中量取引: 2倍の影響
-    if (volumeRatio > 2) return 1.5; // 小量取引: 1.5倍の影響
-
-    return 1.0; // 通常取引: 通常の影響
-  }
-
   // ==================== 公開メソッド（取引・更新） ====================
+
+  /**
+   * 取引手数料を計算
+   * @param amount 取引量
+   * @param price 取引価格
+   * @param tradeType 取引種別
+   * @returns 手数料額
+   */
+  private calculateTradingFee(amount: number, price: number, tradeType: "buy" | "sell"): number {
+    const { SELL_FEE_MULTIPLIER, MINIMUM_SELL_FEE_RATE, MINIMUM_SELL_FEE_AMOUNT } = BitCoin.TRADING_FEE_CONFIG;
+    
+    const baseFeeRate = Number(this.coin.trading_fee);
+    const totalValue = amount * price;
+    
+    if (tradeType === "sell") {
+      // 売却時は手数料を倍率適用 + 最低手数料を設定
+      const sellFee = totalValue * baseFeeRate * SELL_FEE_MULTIPLIER;
+      const minimumSellFee = Math.max(
+        totalValue * MINIMUM_SELL_FEE_RATE, 
+        MINIMUM_SELL_FEE_AMOUNT
+      );
+      return Math.max(sellFee, minimumSellFee);
+    } else {
+      // 購入時は通常の手数料
+      return totalValue * baseFeeRate;
+    }
+  }
+
+  /**
+   * 取引の共通バリデーション
+   * @param amount 取引量
+   * @returns バリデーション結果
+   */
+  private validateTrade(amount: number): { isValid: boolean; error?: string } {
+    if (amount <= 0) {
+      return { isValid: false, error: "Amount must be positive" };
+    }
+
+    if (!this.coin.is_tradeable || !this.coin.is_active) {
+      return { isValid: false, error: "This coin is not tradeable" };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
+   * 取引処理の共通実行
+   * @param userId ユーザーID
+   * @param amount 取引量
+   * @param actualPrice 実際の価格
+   * @param tradeType 取引タイプ
+   * @returns 取引結果またはnull
+   */
+  private async executeTrade(
+    userId: string,
+    amount: number,
+    actualPrice: number,
+    tradeType: "buy" | "sell"
+  ): Promise<{ coin: BitCoin; history: History } | null> {
+    try {
+      // 取引手数料を計算
+      const tradingFee = this.calculateTradingFee(amount, actualPrice, tradeType);
+      console.log(`[Trading Fee] Amount: ${amount}, Price: ${actualPrice}, Type: ${tradeType}, Fee: ${tradingFee.toFixed(4)}`);
+
+      // ユーザーインスタンスを取得
+      const user = await User.get(userId);
+      if (!user) {
+        console.error("User not found");
+        return null;
+      }
+
+      // Bank取得と取引履歴記録を並行実行
+      const [bank, tradeHistory] = await Promise.all([
+        Bank.get(userId),
+        this.recordTradeHistory(userId, amount, actualPrice, tradeType)
+      ]);
+
+      if (!bank) {
+        console.error("Failed to get bank information");
+        return null;
+      }
+      if (!tradeHistory) {
+        console.error("Failed to record trade history");
+        return null;
+      }
+
+      // 売却時の保有量チェック
+      if (tradeType === "sell") {
+        const availableAmount = await bank.getCoinAmount(this.coinId);
+        if (availableAmount === null || availableAmount < amount) {
+          console.error(`Insufficient holdings. Required: ${amount}, Available: ${availableAmount || 0}`);
+          return null;
+        }
+      }
+
+      // 購入時：コイン代金＋手数料を支払い
+      // 売却時：売却代金から手数料を差し引き
+      if (tradeType === "buy") {
+        const totalCost = (amount * actualPrice) + tradingFee;
+        if (user.user.base_coin.lessThan(totalCost)) {
+          console.error(`Insufficient balance for purchase. Required: ${totalCost}, Available: ${user.user.base_coin}`);
+          return null;
+        }
+        await user.pullBaseCoin(-totalCost); // 代金＋手数料を支払い
+      } else {
+        const totalRevenue = (amount * actualPrice) - tradingFee;
+        await user.pullBaseCoin(totalRevenue); // 売却代金から手数料を差し引いて受け取り
+      }
+
+      // 価格更新とbank更新を並行実行
+      const bankAmount = tradeType === "buy" ? amount : -amount;
+      const [updatedCoin, bankResult] = await Promise.all([
+        this.updatePriceByTrade(tradeType, amount, actualPrice),
+        bank.update(this.coinId, bankAmount)
+      ]);
+
+      if (!updatedCoin) {
+        console.error("Failed to update coin price");
+        return null;
+      }
+      if (bankResult !== true) {
+        console.error("Failed to update bank information");
+        return null;
+      }
+
+      return { coin: updatedCoin, history: tradeHistory };
+    } catch (error) {
+      console.error(`Failed to execute ${tradeType} trade: ${(error as Error).message}`);
+      return null;
+    }
+  }
 
   /**
    * コインを購入する
@@ -500,48 +599,19 @@ class BitCoin {
     amount: number,
     pricePerCoin?: number,
   ): Promise<{ coin: BitCoin; history: History } | null> {
-    try {
-      if (amount <= 0) {
-        console.error("Purchase amount must be positive");
-        return null;
-      }
-
-      if (!this.coin.is_tradeable || !this.coin.is_active) {
-        console.error("This coin is not tradeable");
-        return null;
-      }
-
-      const currentPrice = Number(this.coin.current_price);
-      const actualPrice = pricePerCoin || currentPrice;
-      const totalCost = amount * actualPrice;
-
-      // 取引履歴を記録
-      const tradeHistory = await this.recordTradeHistory(buyerId, amount, actualPrice, "buy");
-      if (!tradeHistory) {
-        console.error("Failed to record trade history");
-        return null;
-      }
-
-      // 価格を更新
-      const updatedCoin = await this.updatePriceByTrade(
-        "buy",
-        amount,
-        actualPrice,
-      );
-
-      if (!updatedCoin) {
-        console.error("Failed to update coin price");
-        return null;
-      }
-
-      return { coin: updatedCoin, history: tradeHistory };
-    } catch (error) {
-      console.error(`Failed to buy coin: ${(error as Error).message}`);
+    const validation = this.validateTrade(amount);
+    if (!validation.isValid) {
+      console.error(`Purchase validation failed: ${validation.error}`);
       return null;
     }
+
+    const currentPrice = Number(this.coin.current_price);
+    const actualPrice = pricePerCoin || currentPrice;
+
+    return await this.executeTrade(buyerId, amount, actualPrice, "buy");
   }
 
-    /**
+  /**
    * コインを売却する
    * @param sellerId 売却者のユーザーID
    * @param amount 売却量
@@ -553,44 +623,16 @@ class BitCoin {
     amount: number,
     pricePerCoin?: number,
   ): Promise<{ coin: BitCoin; history: History } | null> {
-    try {
-      if (amount <= 0) {
-        console.error("Sell amount must be positive");
-        return null;
-      }
-
-      if (!this.coin.is_tradeable || !this.coin.is_active) {
-        console.error("This coin is not tradeable");
-        return null;
-      }
-
-      const currentPrice = Number(this.coin.current_price);
-      const actualPrice = pricePerCoin || currentPrice;
-
-      // 取引履歴を記録
-      const tradeHistory = await this.recordTradeHistory(sellerId, amount, actualPrice, "sell");
-      if (!tradeHistory) {
-        console.error("Failed to record trade history");
-        return null;
-      }
-
-      // 価格を更新
-      const updatedCoin = await this.updatePriceByTrade(
-        "sell",
-        amount,
-        actualPrice,
-      );
-
-      if (!updatedCoin) {
-        console.error("Failed to update coin price");
-        return null;
-      }
-
-      return { coin: updatedCoin, history: tradeHistory };
-    } catch (error) {
-      console.error(`Failed to sell coin: ${(error as Error).message}`);
+    const validation = this.validateTrade(amount);
+    if (!validation.isValid) {
+      console.error(`Sale validation failed: ${validation.error}`);
       return null;
     }
+
+    const currentPrice = Number(this.coin.current_price);
+    const actualPrice = pricePerCoin || currentPrice;
+
+    return await this.executeTrade(sellerId, amount, actualPrice, "sell");
   }
 
   /**
