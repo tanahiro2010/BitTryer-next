@@ -132,7 +132,7 @@ model TradeHistory {
   
   amount     Decimal     @default(0)
   price      Decimal     @default(0)
-  side       TradeType // 取引種別（buy/sell/send/catch）
+  side       TradeType // 取引種別（buy/sell/send/receive）
   author_id  String? // 取引を行ったユーザーID（任意、送金時など）
   status     TradeStatus @default(loading) // 取引ステータス（loading/completed/failed）
 
@@ -148,7 +148,7 @@ enum TradeType {
   buy
   sell
   send
-  catch
+  receive
 }
 
 enum TradeStatus {
