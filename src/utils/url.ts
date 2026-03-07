@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 
 /**
  * SSRでアプリケーションのベースURLを取得するユーティリティ
+ * @returns {Promise<string>} ベースURL
  */
 export async function getBaseUrl(): Promise<string> {
   // 1. 環境変数から取得（最優先）
